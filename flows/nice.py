@@ -53,7 +53,7 @@ class AddCouplingLayer(Layer):
 
     def call(self, inputs):
         x1, x2 = self.split(inputs)
-        if self.mode=='odd':
+        if self.mode == 'odd':
             x2 = x2 + self.coupling_func(x1)*(-1 if self.inverse else 1)
         else:
             x1 = x1 + self.coupling_func(x2)*(-1 if self.inverse else 1)
@@ -86,7 +86,7 @@ class NiceFlow:
         for l in range(self.layers):
             x = AddCouplingLayer(
                     coupling_function=self.coup_funcs[l],
-                    mode=('even' if l%2 else 'odd'))(x)
+                    mode=('even' if l % 2 else 'odd'))(x)
 
         return Model(inputs=inp, outputs=x)
 
@@ -96,7 +96,7 @@ class NiceFlow:
         for l in range(self.layers-1, -1, -1):
             x = AddCouplingLayer(
                     coupling_function=self.coup_funcs[l],
-                    mode=('even' if l%2 else 'odd'),
+                    mode=('even' if l % 2 else 'odd'),
                     inverse=True)(x)
 
         return Model(inputs=inp, outputs=x)
@@ -104,9 +104,15 @@ class NiceFlow:
     def _get_coup_funcs(self, hidden_size, activation):
         coup_funcs = []
         for l in range(self.layers):
+            if l % 2:
+                inp_dim = self.input_dim - self.input_dim//2
+                out_dim = self.input_dim//2
+            else:
+                inp_dim = self.input_dim//2
+                out_dim = self.input_dim - self.input_dim//2
             coup_funcs.append(
-                MLP(self.input_dim//2,
-                    output_dim= self.input_dim - self.input_dim//2,
+                MLP(inp_dim,
+                    output_dim=out_dim,
                     activation=activation,
                     hidden_size=hidden_size)
                 )

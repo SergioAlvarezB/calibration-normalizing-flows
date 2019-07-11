@@ -4,17 +4,39 @@ from sklearn.isotonic import IsotonicRegression
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
 
-from utils.ops import onehot_encode
+from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow
+
+
+class TempScalingCalibrator:
+
+    def __init__(self, logits, target):
+        self.logits = logits
+
+        if target.shape != logits.shape:
+            target = onehot_encode(target)
+        self.target = target
+
+        (_, self.n_classes) = target.shape
+
+        self.fit(logits, target)
+
+    def fit(self, logits, target):
+        self.T = optim_temperature(logits, target)
+
+    def predict(self, logits):
+        return softmax(logits/self.T, axis=1)
 
 
 class PAVCalibrator:
 
     def __init__(self, logits, target):
         self.logits = logits
+
         if target.shape != logits.shape:
             target = onehot_encode(target)
         self.target = target
+
         (_, self.n_classes) = target.shape
 
         # We use 1 vs rest approach, perform a
@@ -58,11 +80,11 @@ class NiceCalibrator:
 
         self._build_flow(kwargs)
 
-        self.fit(self.logits,
+        self.history = self.fit(
+                self.logits,
                 self.target,
                 epochs=kwargs.get('epochs', 1000),
                 batch_size=kwargs.get('batch_size', 100))
-
 
     def _build_flow(self, kwargs):
         flow_args = {k: v for k, v in kwargs.items()
@@ -79,11 +101,13 @@ class NiceCalibrator:
         return Model(inputs=self.flow.forward_model.input, outputs=y)
 
     def fit(self, logits, target, epochs=1000, batch_size=100):
-        self.train_model.fit(logits,
+        h = self.train_model.fit(
+                logits,
                 target,
                 epochs=epochs,
                 batch_size=batch_size,
                 verbose=0)
+        return h
 
     def predict_logits(self, logits):
         return self.flow.forward_model.predict(logits, batch_size=100)

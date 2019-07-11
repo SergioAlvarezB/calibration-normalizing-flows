@@ -30,6 +30,7 @@ def project_point_ontriplex(point):
 
     return new_point
 
+
 def project_sequence_ontriplex(points):
     """Applies the transformation `project_point_ontriplex`
     to each row of `points`.
@@ -66,13 +67,14 @@ def optim_temperature(logits,
         grad = -np.mean(np.sum((probs-target)*logits/x**2, axis=1))
         return grad
 
-    if method.lower()=='newton':
+    if method.lower() == 'newton':
 
         def target_func(x, logits, target):
             probs = softmax(logits/x, axis=1)
-            return  np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
+            return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
-        optim_T = minimize(target_func,
+        optim_T = minimize(
+                target_func,
                 x0=T,
                 args=(logits, target),
                 method='Newton-CG',
