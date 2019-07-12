@@ -8,9 +8,9 @@ from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow
 
 
-class TempScalingCalibrator:
-
+class Calibrator:
     def __init__(self, logits, target):
+        """Implementes base abstract class for calibrators."""
         self.logits = logits
 
         if target.shape != logits.shape:
@@ -18,6 +18,27 @@ class TempScalingCalibrator:
         self.target = target
 
         (_, self.n_classes) = target.shape
+
+        self.log_priors = self._get_log_priors(target)
+
+    def _get_log_priors(self, target):
+        priors = np.sum(target, axis=0)
+        priors = priors/np.sum(priors)
+
+        return np.log(priors)
+
+    def predict(self, logits):
+        raise NotImplementedError
+
+    def predict_RL(self, logits):
+        probs = self.predict(logits)
+        return np.log(probs) - self.log_priors
+
+
+class TempScalingCalibrator(Calibrator):
+
+    def __init__(self, logits, target):
+        super().__init__(logits, target)
 
         self.fit(logits, target)
 
@@ -28,16 +49,10 @@ class TempScalingCalibrator:
         return softmax(logits/self.T, axis=1)
 
 
-class PAVCalibrator:
+class PAVCalibrator(Calibrator):
 
     def __init__(self, logits, target):
-        self.logits = logits
-
-        if target.shape != logits.shape:
-            target = onehot_encode(target)
-        self.target = target
-
-        (_, self.n_classes) = target.shape
+        super().__init__(logits, target)
 
         # We use 1 vs rest approach, perform a
         # isotonic regression for each class
@@ -67,16 +82,10 @@ class PAVCalibrator:
         return cal_probs
 
 
-class NiceCalibrator:
+class NiceCalibrator(Calibrator):
 
     def __init__(self, logits, target, **kwargs):
-        self.logits = logits
-
-        if target.shape != logits.shape:
-            target = onehot_encode(target)
-        self.target = target
-
-        (_, self.n_classes) = target.shape
+        super().__init__(logits, target)
 
         self._build_flow(kwargs)
 

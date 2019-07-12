@@ -125,6 +125,69 @@ def get_cifar3(data_path,
     return cifar3, cifar3_ix2label
 
 
+def get_cifarn(data_path,
+               n=None,
+               target_labels=None,
+               test=False,
+               prior=None,
+               test_prior=None):
+
+    if n is None and target_labels is None:
+        raise ValueError("Either `n` or `target_labels` must be specified")
+
+    if n is None:
+        assert all([label in ix2label.values() for label in target_labels])
+        n = len(target_labels)
+
+    if target_labels is None:
+        target_labels = [ix2label[k] for k in range(n)]
+
+    cifarn = {
+        'images': [],
+        'labels': []}
+
+    train_batches = ["data_batch_{}".format(i+1) for i in range(5)]
+    target_ixlabels = [label2ix[label] for label in target_labels]
+    cifarn_ix2label = {i: ix2label[ix] for i, ix in enumerate(target_ixlabels)}
+
+    for batch in train_batches:
+        data_batch = unpickle(os.path.join(data_path, batch))
+        curr_batch = process_batch(data_batch, target_ixlabels)
+
+        cifarn['images'] += curr_batch['images']
+        cifarn['labels'] += curr_batch['labels']
+
+    # Convert to numpy array
+    cifarn['images'] = np.array(cifarn['images'])
+    cifarn['labels'] = np.array(cifarn['labels'])
+
+    # Adjust dataset to meet the specified priors
+    if prior is not None:
+        imas, labels = match_priors(cifarn['images'], cifarn['labels'], prior)
+        cifarn['images'], cifarn['labels'] = imas, labels
+
+    if test:
+        test_batch = unpickle(os.path.join(data_path, 'test_batch'))
+        test_batch = process_batch(test_batch, target_ixlabels)
+
+        cifarn['test_images'] = test_batch['images']
+        cifarn['test_labels'] = test_batch['labels']
+
+        # Convert to numpy array
+        cifarn['test_images'] = np.array(cifarn['test_images'])
+        cifarn['test_labels'] = np.array(cifarn['test_labels'])
+
+
+        # Adjust test set to meet the specified priors
+        if test_prior is not None:
+            imas, labels = match_priors(cifarn['test_images'],
+                    cifarn['test_labels'],
+                    test_prior)
+            cifarn['test_images'], cifarn['test_labels'] = imas, labels
+
+    return cifarn, cifarn_ix2label
+
+
 def get_cifar10(data_path, test=False, prior=None, test_prior=None):
     cifar10 = {
         'images': [],
