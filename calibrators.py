@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import softmax
+from scipy.optimize import minimize
 from sklearn.isotonic import IsotonicRegression
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
@@ -40,13 +41,56 @@ class TempScalingCalibrator(Calibrator):
     def __init__(self, logits, target):
         super().__init__(logits, target)
 
-        self.fit(logits, target)
+        self.fit(self.logits, self.target)
 
     def fit(self, logits, target):
         self.T = optim_temperature(logits, target)
 
     def predict(self, logits):
         return softmax(logits/self.T, axis=1)
+
+
+class MLRCalibrator(Calibrator):
+
+    def __init__(self, logits, target):
+        super().__init__(logits, target)
+        self.alpha = 1.
+        self.gamma = np.zeros(self.n_classes)
+
+        self.fit(self.logits, self.target)
+
+    def fit(self, logits, target):
+
+        def target_func(x, logits, target):
+            tlogits = x[0]*logits + x[1:]
+            probs = softmax(tlogits, axis=1)
+            return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
+
+        def grads(x, logits, target):
+            grad = np.zeros(x.shape)
+            tlogits = x[0]*logits + x[1:]
+            probs = softmax(tlogits, axis=1)
+            dalpha = np.mean(np.sum((probs-target)*logits, axis=1))
+            dgamma = np.mean((probs-target), axis=0)
+            grad[0], grad[1:] = dalpha, dgamma
+
+            return grad
+
+        x0 = np.concatenate(([self.alpha], self.gamma))
+
+        self.optim = minimize(target_func,
+                x0=x0,
+                args=(logits, target),
+                method='CG',
+                jac=grads)
+
+        self.alpha = self.optim.x[0]
+        self.gammma = self.optim.x[1:]
+
+    def predict(self, logits):
+        tlogits = self.alpha*logits + self.gamma
+        probs = softmax(tlogits, axis=1)
+        return probs
 
 
 class PAVCalibrator(Calibrator):
@@ -59,7 +103,7 @@ class PAVCalibrator(Calibrator):
         self.models = [IsotonicRegression(y_min=0, y_max=1)
                        for _ in range(self.n_classes)]
 
-        self.fit(logits, target)
+        self.fit(self.logits, self.target)
 
     def fit(self, logits, target):
 

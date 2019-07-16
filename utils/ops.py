@@ -73,8 +73,7 @@ def optim_temperature(logits,
             probs = softmax(logits/x, axis=1)
             return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
-        optim_T = minimize(
-                target_func,
+        optim_T = minimize(target_func,
                 x0=T,
                 args=(logits, target),
                 method='Newton-CG',
