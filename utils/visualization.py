@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-from .ops import project_sequence, project_point
+from .ops import project_sequence, project_point, onehot_encode
 
 
 def plot_prob_triplex(probs,
@@ -79,3 +79,58 @@ def plot_pdf_triplex(probs,
             fontsize=fontsize)
 
     return tax
+
+
+def reliability_plot(probs,
+                     target,
+                     ax=None,
+                     bins=20,
+                     fontsize=12,
+                     labels=None,
+                     optimum=True,
+                     title='Reliability Plot'):
+
+    if not isinstance(probs, list):
+        probs = [probs]
+
+    if target.shape != probs[0].shape:
+        target = onehot_encode(target)
+
+    # Evaluate the probability of each sample independently
+    probs, target = [prob.ravel() for prob in probs], target.ravel()
+
+    # Generate intervals
+    limits = np.linspace(0, 1, num=bins+1)
+
+    # Compute empiric probabilities
+    empiric_probs = np.zeros((len(probs), bins))
+    ref_probs = np.zeros(bins)
+    for i in range(bins):
+        low, high = limits[i:i+2]
+        ref_probs[i] = (low+high)/2.
+        for j in range(len(probs)):
+            curr_targets = target[np.where((low<probs[j]) & (probs[j]<=high))]
+            if curr_targets.size > 0:
+                empiric_probs[j, i] = np.sum(curr_targets)/curr_targets.size
+
+    # Build plot
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    markers = ['--bo', '--rx', '--g^', '--ys', '--m*', '--cd']
+
+    if optimum:
+        ax.plot(limits, limits, '--k')
+        if labels is not None:
+            labels = ['Optimum calibration'] + labels
+
+    for j in range(len(probs)):
+        ax.plot(ref_probs, empiric_probs[j, :], markers[j%len(markers)])
+
+    if labels is not None:
+        ax.legend(labels, loc='upper left')
+    ax.set_title(title+'\n\n', fontsize=fontsize)
+    ax.set_xlabel('Predicted probability', fontsize=fontsize)
+    ax.set_ylabel('Empiric probability', fontsize=fontsize)
+
+    return ax

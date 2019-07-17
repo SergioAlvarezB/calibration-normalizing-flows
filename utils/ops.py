@@ -50,6 +50,24 @@ def onehot_encode(target):
     return one_hot
 
 
+def detection_log_likelihood_ratios(logits, priors):
+    log_LR = np.zeros(logits.shape)
+
+    for cls in range(log_LR.shape[1]):
+        for i in range(log_LR.shape[1]):
+            if i==cls:
+                continue
+            log_LR[:, cls] += priors[i]/(1 - priors[cls]) \
+                              * np.exp(logits[:, i] - logits[:, cls])
+
+    log_LR = -np.log2(log_LR)
+
+    return log_LR
+
+
+
+
+
 def optim_temperature(logits,
                       target,
                       method='newton',
