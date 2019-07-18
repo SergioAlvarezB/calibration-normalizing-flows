@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from scipy import stats
 
 from .ops import project_sequence, project_point, onehot_encode
+from .metrics import empirical_cross_entropy
 
 
 def plot_prob_triplex(probs,
@@ -132,5 +133,66 @@ def reliability_plot(probs,
     ax.set_title(title+'\n\n', fontsize=fontsize)
     ax.set_xlabel('Predicted probability', fontsize=fontsize)
     ax.set_ylabel('Empiric probability', fontsize=fontsize)
+
+    return ax
+
+
+def ECE_plot(like_ratios,
+             target,
+             cal_ratios=None,
+             ax=None,
+             bins=100,
+             fontsize=12,
+             title='ECE plot',
+             range=[-2.5, 2.5],
+             ref=True):
+
+    logprior_axis = np.linspace(range[0], range[1], num=bins)
+    base_ECE = np.zeros(logprior_axis.shape)
+    if ref:
+        ref_ECE = np.zeros(logprior_axis.shape)
+        ref_LR = np.ones(like_ratios.shape, dtype=np.float32)
+    if cal_ratios is not None:
+        cal_ECE = np.zeros(logprior_axis.shape)
+
+    # Compute ECE values
+    for i, logprior in enumerate(logprior_axis):
+        odds = 10**(logprior)
+        prior = odds/(1. + odds)
+        base_ECE[i] = empirical_cross_entropy(like_ratios, target, prior)
+
+        if ref:
+            ref_ECE[i] = empirical_cross_entropy(ref_LR, target, prior)
+
+        if cal_ratios is not None:
+            cal_ECE[i] = empirical_cross_entropy(cal_ratios, target, prior)
+
+    # Build plot
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.plot(logprior_axis, base_ECE, 'r')
+
+    if ref:
+        ax.plot(logprior_axis, ref_ECE, '--k')
+
+    if cal_ratios is not None:
+        ax.plot(logprior_axis, cal_ECE, '--b')
+
+    labels = ['LR values']
+
+    if ref:
+        labels += ['LR=1']
+
+    if cal_ratios is not None:
+        labels += ['After Calibration']
+
+    ax.set_title(title+'\n', fontsize=fontsize)
+    ax.set_xlabel('Prior log$_{10}$(odds)', fontsize=fontsize)
+    ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
+
+    ax.set_ylim(0, 1)
+
+    ax.legend(labels, loc='upper right')
 
     return ax
