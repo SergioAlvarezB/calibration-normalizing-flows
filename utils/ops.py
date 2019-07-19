@@ -60,7 +60,7 @@ def detection_log_likelihood_ratios(logits, priors):
             log_LR[:, cls] += priors[i]/(1 - priors[cls]) \
                               * np.exp(logits[:, i] - logits[:, cls])
 
-    log_LR = -np.log2(log_LR)
+    log_LR = -np.log(log_LR)
 
     return log_LR
 
