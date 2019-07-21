@@ -55,7 +55,7 @@ def detection_log_likelihood_ratios(logits, priors):
 
     for cls in range(log_LR.shape[1]):
         for i in range(log_LR.shape[1]):
-            if i==cls:
+            if i == cls:
                 continue
             log_LR[:, cls] += priors[i]/(1 - priors[cls]) \
                               * np.exp(logits[:, i] - logits[:, cls])
