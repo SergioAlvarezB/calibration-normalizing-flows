@@ -78,7 +78,8 @@ class MLRCalibrator(Calibrator):
 
         x0 = np.concatenate(([self.alpha], self.gamma))
 
-        self.optim = minimize(target_func,
+        self.optim = minimize(
+                target_func,
                 x0=x0,
                 args=(logits, target),
                 method='CG',

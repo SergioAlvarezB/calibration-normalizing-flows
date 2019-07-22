@@ -58,14 +58,11 @@ def detection_log_likelihood_ratios(logits, priors):
             if i == cls:
                 continue
             log_LR[:, cls] += priors[i]/(1 - priors[cls]) \
-                              * np.exp(logits[:, i] - logits[:, cls])
+                * np.exp(logits[:, i] - logits[:, cls])
 
     log_LR = -np.log(log_LR)
 
     return log_LR
-
-
-
 
 
 def optim_temperature(logits,
@@ -91,7 +88,8 @@ def optim_temperature(logits,
             probs = softmax(logits/x, axis=1)
             return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
-        optim_T = minimize(target_func,
+        optim_T = minimize(
+                target_func,
                 x0=T,
                 args=(logits, target),
                 method='Newton-CG',

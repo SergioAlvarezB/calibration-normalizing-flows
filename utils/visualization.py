@@ -25,9 +25,10 @@ def plot_prob_triplex(probs,
     else:
         colors = ['red', 'green', 'blue']
         for i, label in enumerate(labels):
-            points = probs[target==i, :]
-            if len(points)>=1:
-                tax.scatter(points,
+            points = probs[target == i, :]
+            if len(points) >= 1:
+                tax.scatter(
+                        points,
                         color=colors[i],
                         label=label)
 
@@ -35,11 +36,11 @@ def plot_prob_triplex(probs,
     tax.boundary(linewidth=2.0)
     tax.set_title(title+'\n\n', fontsize=fontsize)
     tax.right_corner_label("P($\\theta$={})".format(labels[0]),
-            fontsize=fontsize)
+                           fontsize=fontsize)
     tax.top_corner_label("P($\\theta$={})".format(labels[1]),
-            fontsize=fontsize)
+                         fontsize=fontsize)
     tax.left_corner_label("P($\\theta$={})".format(labels[2]),
-            fontsize=fontsize)
+                          fontsize=fontsize)
 
     return tax
 
@@ -64,7 +65,8 @@ def plot_pdf_triplex(probs,
 
     ax.axis('off')
     figure, tax = ternary.figure(ax=ax, scale=scale)
-    tax.heatmapf(estimated_pdf,
+    tax.heatmapf(
+            estimated_pdf,
             boundary=True,
             style="hexagonal",
             cmap=plt.get_cmap('gnuplot'),
@@ -73,11 +75,11 @@ def plot_pdf_triplex(probs,
     tax.boundary(linewidth=2.0)
     tax.set_title(title+'\n\n', fontsize=fontsize)
     tax.right_corner_label("P($\\theta$={})".format(labels[0]),
-            fontsize=fontsize)
+                           fontsize=fontsize)
     tax.top_corner_label("P($\\theta$={})".format(labels[1]),
-            fontsize=fontsize)
+                         fontsize=fontsize)
     tax.left_corner_label("P($\\theta$={})".format(labels[2]),
-            fontsize=fontsize)
+                          fontsize=fontsize)
 
     return tax
 
@@ -110,7 +112,8 @@ def reliability_plot(probs,
         low, high = limits[i:i+2]
         ref_probs[i] = (low+high)/2.
         for j in range(len(probs)):
-            curr_targets = target[np.where((low<probs[j]) & (probs[j]<=high))]
+            idx = np.where((low < probs[j]) & (probs[j] <= high))
+            curr_targets = target[idx]
             if curr_targets.size > 0:
                 empiric_probs[j, i] = np.sum(curr_targets)/curr_targets.size
 
@@ -126,7 +129,7 @@ def reliability_plot(probs,
             labels = ['Optimum calibration'] + labels
 
     for j in range(len(probs)):
-        ax.plot(ref_probs, empiric_probs[j, :], markers[j%len(markers)])
+        ax.plot(ref_probs, empiric_probs[j, :], markers[j % len(markers)])
 
     if labels is not None:
         ax.legend(labels, loc='upper left')
@@ -174,10 +177,12 @@ def ECE_plot(like_ratios,
     ax.plot(logprior_axis, base_ECE, 'r')
 
     if ref:
-        ax.plot(logprior_axis, ref_ECE, '--k')
+        ax.plot(logprior_axis, ref_ECE, ':k')
 
     if cal_ratios is not None:
         ax.plot(logprior_axis, cal_ECE, '--b')
+
+    ax.plot([0, 0], [0, 1], '--k')
 
     labels = ['LR values']
 
