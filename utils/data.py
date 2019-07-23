@@ -23,6 +23,7 @@ ix2label = {
     9: 'truck'}
 label2ix = {v: k for k, v in ix2label.items()}
 
+
 def unpickle(file):
     import pickle
     with open(file, 'rb') as fo:
@@ -74,6 +75,7 @@ def match_priors(images, labels, prior):
 
     return images, labels
 
+
 def get_cifar3(data_path,
                target_labels=DEFAULT_CIFAR3[:],
                test=False,
@@ -114,10 +116,10 @@ def get_cifar3(data_path,
         cifar3['test_images'] = np.array(cifar3['test_images'])
         cifar3['test_labels'] = np.array(cifar3['test_labels'])
 
-
         # Adjust test set to meet the specified priors
         if test_prior is not None:
-            imas, labels = match_priors(cifar3['test_images'],
+            imas, labels = match_priors(
+                    cifar3['test_images'],
                     cifar3['test_labels'],
                     test_prior)
             cifar3['test_images'], cifar3['test_labels'] = imas, labels
@@ -177,10 +179,10 @@ def get_cifarn(data_path,
         cifarn['test_images'] = np.array(cifarn['test_images'])
         cifarn['test_labels'] = np.array(cifarn['test_labels'])
 
-
         # Adjust test set to meet the specified priors
         if test_prior is not None:
-            imas, labels = match_priors(cifarn['test_images'],
+            imas, labels = match_priors(
+                    cifarn['test_images'],
                     cifarn['test_labels'],
                     test_prior)
             cifarn['test_images'], cifarn['test_labels'] = imas, labels
@@ -209,7 +211,10 @@ def get_cifar10(data_path, test=False, prior=None, test_prior=None):
 
     # Adjust dataset to meet the specified priors
     if prior is not None:
-        imas, labels = match_priors(cifar10['images'], cifar10['labels'], prior)
+        imas, labels = match_priors(
+                cifar10['images'],
+                cifar10['labels'],
+                prior)
         cifar10['images'], cifar10['labels'] = imas, labels
 
     if test:
@@ -225,7 +230,8 @@ def get_cifar10(data_path, test=False, prior=None, test_prior=None):
 
         # Adjust test set to meet the specified priors
         if test_prior is not None:
-            imas, labels = match_priors(cifar10['test_images'],
+            imas, labels = match_priors(
+                    cifar10['test_images'],
                     cifar10['test_labels'],
                     test_prior)
             cifar10['test_images'], cifar10['test_labels'] = imas, labels

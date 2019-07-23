@@ -150,11 +150,27 @@ def ECE_plot(like_ratios,
              range=[-2.5, 2.5],
              ref=True):
 
+    n_classes = 2
+    if like_ratios.ndim == 2:
+
+        n_classes = max(like_ratios.shape[1], 2)
+
+        if target.shape != like_ratios.shape:
+            target = onehot_encode(target)
+
+        # Flatten ratios to evaluate them altogether
+        like_ratios = like_ratios.ravel()
+        if cal_ratios is not None:
+            cal_ratios = cal_ratios.ravel()
+        target = target.ravel()
+
+    neutral_ratio = (1. / (n_classes - 1))
+
     logprior_axis = np.linspace(range[0], range[1], num=bins)
     base_ECE = np.zeros(logprior_axis.shape)
     if ref:
         ref_ECE = np.zeros(logprior_axis.shape)
-        ref_LR = np.ones(like_ratios.shape, dtype=np.float32)
+        ref_LR = np.ones(like_ratios.shape) * neutral_ratio
     if cal_ratios is not None:
         cal_ECE = np.zeros(logprior_axis.shape)
 
@@ -182,12 +198,12 @@ def ECE_plot(like_ratios,
     if cal_ratios is not None:
         ax.plot(logprior_axis, cal_ECE, '--b')
 
-    ax.plot([0, 0], [0, 1], '--k')
+    ax.plot([np.log10(neutral_ratio), np.log10(neutral_ratio)], [0, 1], '--k')
 
     labels = ['LR values']
 
     if ref:
-        labels += ['LR=1']
+        labels += ['LR={:.3f}'.format(neutral_ratio)]
 
     if cal_ratios is not None:
         labels += ['After Calibration']
@@ -197,6 +213,7 @@ def ECE_plot(like_ratios,
     ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
 
     ax.set_ylim(0, 1)
+    ax.set_xlim(range[0], range[1])
 
     ax.legend(labels, loc='upper right')
 
