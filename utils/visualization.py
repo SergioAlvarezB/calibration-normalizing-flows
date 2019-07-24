@@ -23,6 +23,8 @@ def plot_prob_triplex(probs,
     if target is None:
         tax.scatter(probs)
     else:
+        if target.ndim == 2:
+            target = np.argmax(target, axis=1)
         colors = ['red', 'green', 'blue']
         for i, label in enumerate(labels):
             points = probs[target == i, :]
