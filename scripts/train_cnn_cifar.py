@@ -17,6 +17,12 @@ model_name = 'cnn_cifar'
 
 cifar3, ix2label = get_cifar3(data_path, test=True)
 
+# Use only 10% of the data to favour overfitting
+n_samples = cifar3['images'].shape[0]
+idx = np.random.permutation(n_samples)[:int(n_samples//10)]
+cifar3['images'] = cifar3['images'][idx]
+cifar3['labels'] = cifar3['labels'][idx]
+
 # Pre-process data
 y_train = onehot_encode(cifar3['labels'])
 y_test = onehot_encode(cifar3['test_labels'])
