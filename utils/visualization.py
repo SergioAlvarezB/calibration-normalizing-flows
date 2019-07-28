@@ -86,6 +86,72 @@ def plot_pdf_simplex(probs,
     return tax
 
 
+def reliability_diagram(probs,
+                        target,
+                        ax=None,
+                        bins=20,
+                        fontsize=12,
+                        label='Output',
+                        optimum=True,
+                        title='Reliability Diagram'):
+
+    if target.shape != probs[0].shape:
+        target = onehot_encode(target)
+
+    # Evaluate the probability of classes altogether
+    probs, target = probs.ravel(), target.ravel()
+
+    # Generate intervals
+    limits = np.linspace(0, 1, num=bins+1)
+    width = 1./bins
+
+    # Compute empiric probabilities
+    empiric_probs = np.zeros(bins)
+    ref_probs = np.zeros(bins)
+    for i in range(bins):
+        low, high = limits[i:i+2]
+        ref_probs[i] = (low+high)/2.
+
+        idx = np.where((low < probs) & (probs <= high))
+        curr_targets = target[idx]
+
+        if curr_targets.size > 0:
+            empiric_probs[i] = np.sum(curr_targets)/curr_targets.size
+
+    # Build plot
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.bar(ref_probs,
+           empiric_probs,
+           width,
+           label=label,
+           color='b',
+           edgecolor='#000099')
+
+    if optimum:
+        stacked = np.stack((ref_probs, empiric_probs))
+        bottom = np.min(stacked, axis=0)
+        height = np.max(stacked, axis=0) - bottom
+        ax.plot(limits, limits, '--k')
+        ax.bar(ref_probs,
+               height,
+               width,
+               bottom=bottom,
+               label='Gap',
+               alpha=0.3,
+               color='r',
+               edgecolor='r',
+               hatch='/')
+
+    ax.legend(loc='upper left')
+    ax.set_title(title+'\n\n', fontsize=fontsize)
+    ax.set_xlabel('Predicted probability', fontsize=fontsize)
+    ax.set_ylabel('Empiric probability', fontsize=fontsize)
+
+    return ax
+
+
 def reliability_plot(probs,
                      target,
                      ax=None,
