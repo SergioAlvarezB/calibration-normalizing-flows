@@ -7,7 +7,7 @@ from .ops import project_sequence, project_point, onehot_encode
 from .metrics import empirical_cross_entropy
 
 
-def plot_prob_triplex(probs,
+def plot_prob_simplex(probs,
                       target=None,
                       ax=None,
                       scale=50,
@@ -47,7 +47,7 @@ def plot_prob_triplex(probs,
     return tax
 
 
-def plot_pdf_triplex(probs,
+def plot_pdf_simplex(probs,
                      ax=None,
                      scale=50,
                      title='Estimated PDF',

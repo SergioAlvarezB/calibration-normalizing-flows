@@ -18,7 +18,7 @@ def project_sequence(points):
     return np.apply_along_axis(project_point, 1, points)
 
 
-def project_point_ontriplex(point):
+def project_point_onsimplex(point):
     """Projects a n-dimensional point on to the n-standar triplex,
     and returns its coordinates on the n+1 dimensional space.
     """
@@ -31,12 +31,12 @@ def project_point_ontriplex(point):
     return new_point
 
 
-def project_sequence_ontriplex(points):
+def project_sequence_onsimplex(points):
     """Applies the transformation `project_point_ontriplex`
     to each row of `points`.
     """
 
-    return np.apply_along_axis(project_point_ontriplex, 1, points)
+    return np.apply_along_axis(project_point_onsimplex, 1, points)
 
 
 def onehot_encode(target):
