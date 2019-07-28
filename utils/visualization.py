@@ -166,7 +166,9 @@ def ECE_plot(like_ratios,
             cal_ratios = cal_ratios.ravel()
         target = target.ravel()
 
-    neutral_ratio = (1. / (n_classes - 1))
+    # ###### TODO extension multiclass ########
+    # neutral_ratio = (1. / (n_classes - 1))
+    neutral_ratio = 1
 
     logprior_axis = np.linspace(range[0], range[1], num=bins)
     base_ECE = np.zeros(logprior_axis.shape)
