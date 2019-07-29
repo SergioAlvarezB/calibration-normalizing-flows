@@ -2,6 +2,7 @@ import ternary
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
+from scipy.special import softmax
 
 from .ops import project_sequence, project_point, onehot_encode
 from .metrics import empirical_cross_entropy
@@ -12,8 +13,14 @@ def plot_prob_simplex(probs,
                       ax=None,
                       scale=50,
                       title='Probabilities',
+                      temp=None,
                       fontsize=12,
                       labels=[0, 1, 2]):
+
+    # Apply temp scaling if passed
+    if temp is not None:
+        logits = np.log(probs)
+        probs = softmax(logits/temp, axis=1)
 
     if ax is None:
         fig, ax = plt.subplots()
@@ -51,9 +58,15 @@ def plot_pdf_simplex(probs,
                      ax=None,
                      scale=50,
                      title='Estimated PDF',
+                     temp=None,
                      fontsize=12,
                      labels=[0, 1, 2]):
     """Makes heatmap ternary plot of the estimated probability density."""
+
+    # Apply temp scaling if passed
+    if temp is not None:
+        logits = np.log(probs)
+        probs = softmax(logits/temp, axis=1)
 
     cart_probs = project_sequence(probs)
     kernel = stats.gaussian_kde(cart_probs.T)
