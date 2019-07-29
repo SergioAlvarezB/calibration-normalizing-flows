@@ -1,5 +1,7 @@
 import os
+import pickle
 
+import numpy as np
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Activation, Flatten, Dense
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
@@ -13,6 +15,7 @@ epochs = 2
 data_path = 'cifar-10'
 save_dir = 'pretrained-models'
 model_name = 'cnn_cifar'
+save_logits = True
 
 
 cifar3, ix2label = get_cifar3(data_path, test=True)
@@ -52,6 +55,9 @@ y = Activation('softmax')(x)
 
 model = Model(inputs=inp, outputs=y)
 
+if save_logits:
+    logit_model = Model(inputs=inp, outputs=x)
+
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
@@ -63,7 +69,7 @@ h = model.fit(x_train, y_train,
               validation_data=(x_test, y_test),
               shuffle=True)
 
-# Save model and weights
+# Save model and weights.
 save_dir = os.path.join(save_dir, model_name)
 if not os.path.isdir(save_dir):
     os.makedirs(save_dir)
@@ -76,3 +82,13 @@ scores = model.evaluate(x_test, y_test, verbose=1)
 probs = model.predict(x_test)
 print('Test loss:', scores[0])
 print('Test accuracy:', scores[1])
+
+# Save logits.
+train_logits = logit_model.predict(x_train, batch_size=batch_size)
+test_logits = logit_model.predict(x_test, batch_size=batch_size)
+
+with open(os.path.join(save_dir, 'train_logits.pkl'), 'wb') as f:
+    pickle.dump(train_logits, f)
+
+with open(os.path.join(save_dir, 'test_logits.pkl'), 'wb') as f:
+    pickle.dump(test_logits, f)
