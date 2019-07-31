@@ -1,39 +1,54 @@
 import os
+import json
 import pickle
+import argparse
 
 import numpy as np
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Activation, Flatten, Dense
 from tensorflow.keras.layers import Conv2D, MaxPooling2D
 
-from utils.data import get_cifar3
+from utils.data import get_cifar3, get_cifar10
 from utils.ops import onehot_encode
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--data_path', type=str, default='cifar-10')
+parser.add_argument('--epochs', type=int, default=160)
+parser.add_argument('--name', type=str, default='cnn_cifar')
+parser.add_argument('--save_dir', type=str, default='pretrained-models')
+parser.add_argument('-3', '--cifar3', action="store_true",
+                    help='If set, it will train the net on cifar3 alone')
+parser.add_argument('--flip_sets', action="store_true",
+                    help='If set, test set is used for training and viceversa')
 
-batch_size = 64
-epochs = 2
-data_path = 'cifar-10'
-save_dir = 'pretrained-models'
-model_name = 'cnn_cifar'
-save_logits = True
+config = parser.parse_args()
 
+batch_size = config.batch_size
+data_path = config.data_path
+epochs = config.epochs
+model_name = config.name
+save_dir = config.save_dir
 
-cifar3, ix2label = get_cifar3(data_path, test=True)
-
-# Use only 10% of the data to favour overfitting
-n_samples = cifar3['images'].shape[0]
-idx = np.random.permutation(n_samples)[:int(n_samples//10)]
-cifar3['images'] = cifar3['images'][idx]
-cifar3['labels'] = cifar3['labels'][idx]
+if config.cifar3:
+    cifar, ix2label = get_cifar3(data_path, test=True)
+    n_classes = 3
+else:
+    cifar, ix2label = get_cifar10(data_path, test=True)
+    n_classes = 10
 
 # Pre-process data
-y_train = onehot_encode(cifar3['labels'])
-y_test = onehot_encode(cifar3['test_labels'])
+y_train = onehot_encode(cifar['labels'])
+y_test = onehot_encode(cifar['test_labels'])
 
-x_train = cifar3['images'].astype('float32')
-x_test = cifar3['test_images'].astype('float32')
+x_train = cifar['images'].astype('float32')
+x_test = cifar['test_images'].astype('float32')
 x_train /= 255.
 x_test /= 255.
+
+if config.flip_sets:
+    x_train, x_test = x_test, x_train
+    y_train, y_test = y_test, y_train
 
 
 # Build model
@@ -50,20 +65,19 @@ x = MaxPooling2D((2, 2))(x)
 x = Flatten()(x)
 x = Dense(256)(x)
 x = Activation('relu')(x)
-x = Dense(3)(x)
+x = Dense(n_classes)(x)
 y = Activation('softmax')(x)
 
 model = Model(inputs=inp, outputs=y)
 
-if save_logits:
-    logit_model = Model(inputs=inp, outputs=x)
+logit_model = Model(inputs=inp, outputs=x)
 
 model.compile(loss='categorical_crossentropy',
               optimizer='adam',
               metrics=['accuracy'])
 
 # Train
-h = model.fit(x_train, y_train,
+H = model.fit(x_train, y_train,
               batch_size=batch_size,
               epochs=epochs,
               validation_data=(x_test, y_test),
@@ -82,6 +96,17 @@ scores = model.evaluate(x_test, y_test, verbose=1)
 probs = model.predict(x_test)
 print('Test loss:', scores[0])
 print('Test accuracy:', scores[1])
+
+# Save model details.
+H = H.history
+H["batch_size"] = batch_size
+H["n_classes"] = n_classes
+H["trainable_parameters"] = model.count_params()
+H['Test loss'] = scores[0]
+H['Test Accuracy'] = scores[1]
+
+with open(os.path.join(save_dir, 'history.json'), 'w') as f:
+    json.dump(H, f)
 
 # Save logits.
 train_logits = logit_model.predict(x_train, batch_size=batch_size)

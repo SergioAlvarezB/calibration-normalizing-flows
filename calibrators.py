@@ -6,7 +6,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
 
 from utils.ops import onehot_encode, optim_temperature
-from flows.nice import NiceFlow
+from flows.nice import NiceFlow, NiceFlow_v2
 
 
 class Calibrator:
@@ -143,7 +143,10 @@ class NiceCalibrator(Calibrator):
     def _build_flow(self, kwargs):
         flow_args = {k: v for k, v in kwargs.items()
                      if k in ['layers', 'hidden_size', 'activation']}
-        self.flow = NiceFlow(input_dim=self.n_classes, **flow_args)
+        if kwargs.get('version', 1) == 1:
+            self.flow = NiceFlow(input_dim=self.n_classes, **flow_args)
+        else:
+            self.flow = NiceFlow_v2(input_dim=self.n_classes, **flow_args)
 
         self.train_model = self._train_model()
         self.train_model.compile(optimizer=kwargs.get('optimizer', 'adam'),

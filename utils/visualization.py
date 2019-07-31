@@ -108,7 +108,7 @@ def reliability_diagram(probs,
                         optimum=True,
                         title='Reliability Diagram'):
 
-    if target.shape != probs[0].shape:
+    if target.shape != probs.shape:
         target = onehot_encode(target)
 
     # Evaluate the probability of classes altogether
@@ -161,6 +161,7 @@ def reliability_diagram(probs,
     ax.set_title(title+'\n\n', fontsize=fontsize)
     ax.set_xlabel('Predicted probability', fontsize=fontsize)
     ax.set_ylabel('Empiric probability', fontsize=fontsize)
+    ax.set_xlim(0, 1)
 
     return ax
 

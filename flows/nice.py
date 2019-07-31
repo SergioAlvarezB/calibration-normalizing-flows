@@ -37,6 +37,21 @@ class Split(Layer):
         return [(None, dim//2), (None, dim - dim//2)]
 
 
+class ReIndex(Layer):
+    def __init__(self, **kwargs):
+        super(ReIndex, self).__init__(**kwargs)
+
+    def call(self, inputs):
+        dim = K.int_shape(inputs)[-1]
+        idxs = list(range(dim))[::-1]
+        x = K.transpose(inputs)
+        x = K.gather(x, idxs)
+        return K.transpose(x)
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+
 class AddCouplingLayer(Layer):
     def __init__(self,
                  coupling_function,
@@ -110,6 +125,59 @@ class NiceFlow:
             else:
                 inp_dim = self.input_dim//2
                 out_dim = self.input_dim - self.input_dim//2
+            coup_funcs.append(
+                MLP(inp_dim,
+                    output_dim=out_dim,
+                    activation=activation,
+                    hidden_size=hidden_size)
+                )
+        return coup_funcs
+
+
+class NiceFlow_v2:
+    def __init__(self,
+                 input_dim,
+                 layers=4,
+                 hidden_size=None,
+                 activation='relu'):
+        self.input_dim = input_dim
+        self.layers = layers
+
+        if hidden_size is None:
+            hidden_size = [input_dim]
+
+        self.coup_funcs = self._get_coup_funcs(hidden_size, activation)
+        self.forward_model = self._flow_forward()
+        self.inverse_model = self._flow_inverse()
+
+    def _flow_forward(self):
+        inp = Input(shape=(self.input_dim,))
+        x = inp
+        for l in range(self.layers):
+            x = AddCouplingLayer(
+                    coupling_function=self.coup_funcs[l],
+                    mode='even')(x)
+            x = ReIndex()(x)
+
+        return Model(inputs=inp, outputs=x)
+
+    def _flow_inverse(self):
+        inp = Input(shape=(self.input_dim,))
+        x = inp
+        for l in range(self.layers-1, -1, -1):
+            x = ReIndex()(x)
+            x = AddCouplingLayer(
+                    coupling_function=self.coup_funcs[l],
+                    mode='even',
+                    inverse=True)(x)
+
+        return Model(inputs=inp, outputs=x)
+
+    def _get_coup_funcs(self, hidden_size, activation):
+        coup_funcs = []
+        inp_dim = self.input_dim - self.input_dim//2
+        out_dim = self.input_dim//2
+        for l in range(self.layers):
             coup_funcs.append(
                 MLP(inp_dim,
                     output_dim=out_dim,
