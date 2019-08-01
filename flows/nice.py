@@ -13,7 +13,7 @@ def MLP(input_dim, output_dim, hidden_size=[], activation='relu'):
 
     for h in hidden_size:
         x = Dense(h, activation=activation)(x)
-    y = Dense(output_dim, activation=activation)(x)
+    y = Dense(output_dim)(x)
 
     return Model(inputs=inp, outputs=y)
 
@@ -38,14 +38,16 @@ class Split(Layer):
 
 
 class ReIndex(Layer):
-    def __init__(self, **kwargs):
+    def __init__(self, idx=None, **kwargs):
+        self.idx = idx
         super(ReIndex, self).__init__(**kwargs)
 
     def call(self, inputs):
-        dim = K.int_shape(inputs)[-1]
-        idxs = list(range(dim))[::-1]
+        if self.idx is None:
+            dim = K.int_shape(inputs)[-1]
+            self.idx = list(range(dim-1, -1, -1))
         x = K.transpose(inputs)
-        x = K.gather(x, idxs)
+        x = K.gather(x, self.idx)
         return K.transpose(x)
 
     def compute_output_shape(self, input_shape):
@@ -158,12 +160,16 @@ class NiceFlow_v2:
                     coupling_function=self.coup_funcs[l],
                     mode='even')(x)
             x = ReIndex()(x)
+        if self.layers%2 == 1:
+            x = ReIndex()(x)
 
         return Model(inputs=inp, outputs=x)
 
     def _flow_inverse(self):
         inp = Input(shape=(self.input_dim,))
         x = inp
+        if self.layers%2 == 1:
+            x = ReIndex()(x)
         for l in range(self.layers-1, -1, -1):
             x = ReIndex()(x)
             x = AddCouplingLayer(
