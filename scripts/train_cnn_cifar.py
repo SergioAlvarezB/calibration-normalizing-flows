@@ -43,13 +43,15 @@ y_test = onehot_encode(cifar['test_labels'])
 
 x_train = cifar['images'].astype('float32')
 x_test = cifar['test_images'].astype('float32')
-x_train /= 255.
-x_test /= 255.
 
 if config.flip_sets:
     x_train, x_test = x_test, x_train
     y_train, y_test = y_test, y_train
 
+x_train /= 255.
+train_mean = np.mean(x_train, axis=0)
+x_train -= train_mean
+x_test = x_test/255. - train_mean
 
 # Build model
 inp = Input(shape=(32, 32, 3))

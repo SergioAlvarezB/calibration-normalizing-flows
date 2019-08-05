@@ -1,4 +1,5 @@
 import os
+import sys
 import pickle
 import argparse
 
@@ -36,13 +37,15 @@ y_test = onehot_encode(cifar['test_labels'])
 
 x_train = cifar['images'].astype('float32')
 x_test = cifar['test_images'].astype('float32')
-x_train /= 255.
-x_test /= 255.
 
 if config.flip_sets:
     x_train, x_test = x_test, x_train
     y_train, y_test = y_test, y_train
 
+x_train /= 255.
+train_mean = np.mean(x_train, axis=0)
+x_train -= train_mean
+x_test = x_test/255. - train_mean
 
 try:
     model = tf.keras.models.load_model(
@@ -51,8 +54,9 @@ try:
     print("Model loaded succesfully.")
 
 except Exception as e:
-    print(("Unable to load model at {}. Raised exception: \n "
+    print(("Unable to load model at ''{}''. Raised exception: \n "
            + "{}").format(config.model_dir, e))
+    sys.exit()
 
 # Remove softmax layer.
 logits = model.layers[-2].output
@@ -61,6 +65,7 @@ logit_model = Model(inputs=model.input, outputs=logits)
 # Save logits.
 train_logits = logit_model.predict(x_train, batch_size=config.batch_size)
 test_logits = logit_model.predict(x_test, batch_size=config.batch_size)
+
 
 with open(os.path.join(config.model_dir, 'train_logits.pkl'), 'wb') as f:
     pickle.dump(train_logits, f)

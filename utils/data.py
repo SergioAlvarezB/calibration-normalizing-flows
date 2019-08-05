@@ -24,8 +24,17 @@ ix2label = {
 label2ix = {v: k for k, v in ix2label.items()}
 
 
+def load_logits(model_dir):
+    with open(os.path.join(model_dir, 'train_logits.pkl'), 'rb') as f:
+        train_logits = pickle.load(f)
+
+    with open(os.path.join(model_dir, 'test_logits.pkl'), 'rb') as f:
+        test_logits = pickle.load(f)
+
+    return train_logits, test_logits
+
+
 def unpickle(file):
-    import pickle
     with open(file, 'rb') as fo:
         dict = pickle.load(fo, encoding='bytes')
     return dict
