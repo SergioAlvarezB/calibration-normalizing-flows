@@ -26,7 +26,7 @@ def empirical_cross_entropy(like_ratios, target, prior):
 
 def expected_calibration_error(probs, target, bins=20):
 
-    if target.shape != probs[0].shape:
+    if target.shape != probs.shape:
         target = onehot_encode(target)
 
     # Evaluate the probability of classes altogether
@@ -45,9 +45,12 @@ def expected_calibration_error(probs, target, bins=20):
 
         idx = np.where((low < probs) & (probs <= high))
         curr_targets = target[idx]
+        curr_probs = probs[idx]
 
         if curr_targets.size > 0:
-            EcalE += abs(np.sum(curr_targets) - ref_prob*curr_targets.size)
+            acc = np.mean(curr_targets)
+            conf = np.mean(curr_probs)
+            EcalE += abs(acc - conf)*curr_targets.size
 
     EcalE /= target.size
 

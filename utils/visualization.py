@@ -123,13 +123,14 @@ def reliability_diagram(probs,
     ref_probs = np.zeros(bins)
     for i in range(bins):
         low, high = limits[i:i+2]
-        ref_probs[i] = (low+high)/2.
 
         idx = np.where((low < probs) & (probs <= high))
         curr_targets = target[idx]
+        curr_probs = probs[idx]
 
         if curr_targets.size > 0:
-            empiric_probs[i] = np.sum(curr_targets)/curr_targets.size
+            empiric_probs[i] = np.mean(curr_targets)
+            ref_probs[i] = np.mean(curr_probs)
 
     # Build plot
     if ax is None:
@@ -197,7 +198,7 @@ def reliability_plot(probs,
             idx = np.where((low < probs[j]) & (probs[j] <= high))
             curr_targets = target[idx]
             if curr_targets.size > 0:
-                empiric_probs[j, i] = np.sum(curr_targets)/curr_targets.size
+                empiric_probs[j, i] = np.mean(curr_targets)
 
     # Build plot
     if ax is None:
