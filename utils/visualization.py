@@ -108,11 +108,10 @@ def reliability_diagram(probs,
                         optimum=True,
                         title='Reliability Diagram'):
 
-    if target.shape != probs.shape:
-        target = onehot_encode(target)
+    if probs.ndim > 1 and target.shape == probs.shape:
+        target = np.argmax(target, axis=1)
 
-    # Evaluate the probability of classes altogether
-    probs, target = probs.ravel(), target.ravel()
+    probs = probs[np.arange(probs.shape[0]), target]
 
     # Generate intervals
     limits = np.linspace(0, 1, num=bins+1)
@@ -125,11 +124,10 @@ def reliability_diagram(probs,
         low, high = limits[i:i+2]
 
         idx = np.where((low < probs) & (probs <= high))
-        curr_targets = target[idx]
         curr_probs = probs[idx]
 
-        if curr_targets.size > 0:
-            empiric_probs[i] = np.mean(curr_targets)
+        if curr_probs.size > 0:
+            empiric_probs[i] = np.mean(curr_probs >= 0.5)
             ref_probs[i] = np.mean(curr_probs)
 
     # Build plot
@@ -179,12 +177,11 @@ def reliability_plot(probs,
     if not isinstance(probs, list):
         probs = [probs]
 
-    if target.shape != probs[0].shape:
-        target = onehot_encode(target)
+    if probs[0].ndim > 1 and target.shape == probs[0].shape:
+        target = np.argmax(target, axis=1)
 
-    # Evaluate the probability of each sample independently
-    probs, target = [prob.ravel() for prob in probs], target.ravel()
-
+    # Take only true-labeled samples.
+    probs = [prob[np.arange(prob.shape[0]), target] for prob in probs]
     # Generate intervals
     limits = np.linspace(0, 1, num=bins+1)
 
@@ -196,9 +193,9 @@ def reliability_plot(probs,
         ref_probs[i] = (low+high)/2.
         for j in range(len(probs)):
             idx = np.where((low < probs[j]) & (probs[j] <= high))
-            curr_targets = target[idx]
-            if curr_targets.size > 0:
-                empiric_probs[j, i] = np.mean(curr_targets)
+            curr_probs = probs[j][idx]
+            if curr_probs.size > 0:
+                empiric_probs[j, i] = np.mean(curr_probs)
 
     # Build plot
     if ax is None:
