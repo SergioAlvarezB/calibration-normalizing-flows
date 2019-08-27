@@ -26,11 +26,16 @@ def empirical_cross_entropy(like_ratios, target, prior):
 
 def expected_calibration_error(probs, target, bins=20):
 
-    if probs.ndim > 1 and target.shape == probs.shape:
-        target = np.argmax(target, axis=1)
+    if probs.ndim > 1:
+        preds = np.argmax(probs, axis=1)
+        if target.shape == probs.shape:
+            target = np.argmax(target, axis=1)
+    else:
+        preds = np.around(probs)
 
     probs = probs[np.arange(probs.shape[0]), target]
-    preds = np.around(probs)
+
+    accs = np.equal(preds, target, dtype=np.float32)
 
     # Compute expected calibration error
     width = 1./bins
@@ -41,10 +46,9 @@ def expected_calibration_error(probs, target, bins=20):
 
         idx = np.where((low < probs) & (probs <= high))
         curr_probs = probs[idx]
-        curr_preds = preds[idx]
 
         if curr_probs.size > 0:
-            acc = np.mean(curr_preds)
+            acc = np.mean(accs[idx])
             conf = np.mean(curr_probs)
             EcalE += abs(acc - conf)*curr_probs.size
 

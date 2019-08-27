@@ -108,10 +108,16 @@ def reliability_diagram(probs,
                         optimum=True,
                         title='Reliability Diagram'):
 
-    if probs.ndim > 1 and target.shape == probs.shape:
-        target = np.argmax(target, axis=1)
+    if probs.ndim > 1:
+        preds = np.argmax(probs, axis=1)
+        if target.shape == probs.shape:
+            target = np.argmax(target, axis=1)
+    else:
+        preds = np.around(probs)
 
     probs = probs[np.arange(probs.shape[0]), target]
+
+    accs = np.equal(preds, target)
 
     # Generate intervals
     limits = np.linspace(0, 1, num=bins+1)
@@ -120,15 +126,18 @@ def reliability_diagram(probs,
     # Compute empiric probabilities
     empiric_probs = np.zeros(bins)
     ref_probs = np.zeros(bins)
+    confs = np.zeros(bins)
     for i in range(bins):
         low, high = limits[i:i+2]
+        ref_probs[i] = (low+high)/2.
 
         idx = np.where((low < probs) & (probs <= high))
+        curr_accs = accs[idx]
         curr_probs = probs[idx]
 
-        if curr_probs.size > 0:
-            empiric_probs[i] = np.mean(curr_probs >= 0.5)
-            ref_probs[i] = np.mean(curr_probs)
+        if curr_accs.size > 0:
+            empiric_probs[i] = np.mean(curr_accs)
+            confs[i] = np.mean(curr_probs)
 
     # Build plot
     if ax is None:
@@ -142,7 +151,7 @@ def reliability_diagram(probs,
            edgecolor='#000099')
 
     if optimum:
-        stacked = np.stack((ref_probs, empiric_probs))
+        stacked = np.stack((confs, empiric_probs))
         bottom = np.min(stacked, axis=0)
         height = np.max(stacked, axis=0) - bottom
         ax.plot(limits, limits, '--k')
