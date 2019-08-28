@@ -117,8 +117,12 @@ def reliability_diagram(probs,
 
     probs = probs[np.arange(probs.shape[0]), target]
 
-    accs = np.equal(preds, target)
+    print(preds[:20])
+    print(target[:20])
 
+    accs = np.equal(preds, target, dtype=np.int32)
+
+    print(accs[:20])
     # Generate intervals
     limits = np.linspace(0, 1, num=bins+1)
     width = 1./bins
@@ -186,11 +190,19 @@ def reliability_plot(probs,
     if not isinstance(probs, list):
         probs = [probs]
 
-    if probs[0].ndim > 1 and target.shape == probs[0].shape:
-        target = np.argmax(target, axis=1)
+    if probs[0].ndim > 1:
+        preds = [np.argmax(prob, axis=1) for prob in probs]
+
+        if target.shape == probs[0].shape:
+            target = np.argmax(target, axis=1)
+
+    else:
+        preds = [np.around(prob) for prob in probs]
 
     # Take only true-labeled samples.
     probs = [prob[np.arange(prob.shape[0]), target] for prob in probs]
+    accs = [np.equal(pred, target) for pred in preds]
+
     # Generate intervals
     limits = np.linspace(0, 1, num=bins+1)
 
@@ -202,9 +214,9 @@ def reliability_plot(probs,
         ref_probs[i] = (low+high)/2.
         for j in range(len(probs)):
             idx = np.where((low < probs[j]) & (probs[j] <= high))
-            curr_probs = probs[j][idx]
-            if curr_probs.size > 0:
-                empiric_probs[j, i] = np.mean(curr_probs)
+            curr_accs = accs[j][idx]
+            if curr_accs.size > 0:
+                empiric_probs[j, i] = np.mean(curr_accs)
 
     # Build plot
     if ax is None:

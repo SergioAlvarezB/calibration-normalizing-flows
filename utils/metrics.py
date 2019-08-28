@@ -25,6 +25,14 @@ def empirical_cross_entropy(like_ratios, target, prior):
 
 
 def expected_calibration_error(probs, target, bins=20):
+    """Computes Expected Calibration Error (ECE) as defined in:
+    Chuan Guo, Geoff Pleiss, Yu Sun and Kilian Q. Weinberger.
+    On Calibration of Modern Nerual Networks. arXiv preprint
+    arXiv:1706.04599, 2017.
+
+    Implemetations details taken from authors oficial repository:
+    https://github.com/gpleiss/temperature_scaling.
+    """
 
     if probs.ndim > 1:
         preds = np.argmax(probs, axis=1)

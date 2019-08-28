@@ -160,7 +160,7 @@ class NiceFlow_v2:
                     coupling_function=self.coup_funcs[l],
                     mode='even')(x)
             x = ReIndex()(x)
-        if self.layers%2 == 1:
+        if self.layers % 2 == 1:
             x = ReIndex()(x)
 
         return Model(inputs=inp, outputs=x)
@@ -168,7 +168,7 @@ class NiceFlow_v2:
     def _flow_inverse(self):
         inp = Input(shape=(self.input_dim,))
         x = inp
-        if self.layers%2 == 1:
+        if self.layers % 2 == 1:
             x = ReIndex()(x)
         for l in range(self.layers-1, -1, -1):
             x = ReIndex()(x)
