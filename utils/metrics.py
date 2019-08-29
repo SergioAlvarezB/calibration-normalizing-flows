@@ -38,10 +38,11 @@ def expected_calibration_error(probs, target, bins=20):
         preds = np.argmax(probs, axis=1)
         if target.shape == probs.shape:
             target = np.argmax(target, axis=1)
+        probs = probs[np.arange(probs.shape[0]), preds]
     else:
         preds = np.around(probs)
+        probs = np.abs((1-preds) - probs)
 
-    probs = probs[np.arange(probs.shape[0]), target]
 
     accs = np.equal(preds, target, dtype=np.float32)
 

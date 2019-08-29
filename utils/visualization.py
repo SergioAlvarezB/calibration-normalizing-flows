@@ -112,17 +112,13 @@ def reliability_diagram(probs,
         preds = np.argmax(probs, axis=1)
         if target.shape == probs.shape:
             target = np.argmax(target, axis=1)
+        probs = probs[np.arange(probs.shape[0]), preds]
     else:
         preds = np.around(probs)
-
-    probs = probs[np.arange(probs.shape[0]), target]
-
-    print(preds[:20])
-    print(target[:20])
+        probs = np.abs((1-preds) - probs)
 
     accs = np.equal(preds, target, dtype=np.int32)
 
-    print(accs[:20])
     # Generate intervals
     limits = np.linspace(0, 1, num=bins+1)
     width = 1./bins
@@ -192,15 +188,17 @@ def reliability_plot(probs,
 
     if probs[0].ndim > 1:
         preds = [np.argmax(prob, axis=1) for prob in probs]
-
         if target.shape == probs[0].shape:
             target = np.argmax(target, axis=1)
+        probs = [prob[np.arange(prob.shape[0]), pred]
+                 for prob, pred in zip(probs, preds)]
+
 
     else:
         preds = [np.around(prob) for prob in probs]
+        probs = [np.abs((1-pred) - prob)
+                 for prob, pred in zip(probs, preds)]
 
-    # Take only true-labeled samples.
-    probs = [prob[np.arange(prob.shape[0]), target] for prob in probs]
     accs = [np.equal(pred, target) for pred in preds]
 
     # Generate intervals
