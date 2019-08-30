@@ -107,8 +107,11 @@ H["trainable_parameters"] = model.count_params()
 H['Test loss'] = scores[0]
 H['Test Accuracy'] = scores[1]
 
-with open(os.path.join(save_dir, 'history.json'), 'w') as f:
-    json.dump(H, f)
+try:
+    with open(os.path.join(save_dir, 'history.json'), 'w') as f:
+        json.dump(H, f)
+except Exception as e:
+    print('######Impossible to save history: \n {}'.format(e))
 
 # Save logits.
 train_logits = logit_model.predict(x_train, batch_size=batch_size)
