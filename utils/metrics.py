@@ -43,7 +43,6 @@ def expected_calibration_error(probs, target, bins=20):
         preds = np.around(probs)
         probs = np.abs((1-preds) - probs)
 
-
     accs = np.equal(preds, target, dtype=np.float32)
 
     # Compute expected calibration error
