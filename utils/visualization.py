@@ -43,7 +43,7 @@ def plot_prob_simplex(probs,
 
         tax.legend()
     tax.boundary(linewidth=2.0)
-    tax.set_title(title+'\n\n', fontsize=fontsize)
+    tax.set_title(title+'\n\n', fontsize=fontsize+2)
     tax.right_corner_label("P($\\theta$={})".format(labels[0]),
                            fontsize=fontsize)
     tax.top_corner_label("P($\\theta$={})".format(labels[1]),
@@ -88,7 +88,7 @@ def plot_pdf_simplex(probs,
             colorbar=False)
 
     tax.boundary(linewidth=2.0)
-    tax.set_title(title+'\n\n', fontsize=fontsize)
+    tax.set_title(title+'\n\n', fontsize=fontsize+2)
     tax.right_corner_label("P($\\theta$={})".format(labels[0]),
                            fontsize=fontsize)
     tax.top_corner_label("P($\\theta$={})".format(labels[1]),
@@ -166,7 +166,7 @@ def reliability_diagram(probs,
                hatch='/')
 
     ax.legend(loc='upper left')
-    ax.set_title(title+'\n\n', fontsize=fontsize)
+    ax.set_title(title+'\n\n', fontsize=fontsize+2)
     ax.set_xlabel('Predicted probability', fontsize=fontsize)
     ax.set_ylabel('Empiric probability', fontsize=fontsize)
     ax.set_xlim(0, 1)
@@ -232,7 +232,7 @@ def reliability_plot(probs,
 
     if labels is not None:
         ax.legend(labels, loc='upper left')
-    ax.set_title(title+'\n\n', fontsize=fontsize)
+    ax.set_title(title+'\n\n', fontsize=fontsize+2)
     ax.set_xlabel('Predicted probability', fontsize=fontsize)
     ax.set_ylabel('Empiric probability', fontsize=fontsize)
 
@@ -309,7 +309,7 @@ def ECE_plot(like_ratios,
     if cal_ratios is not None:
         labels += ['After Calibration']
 
-    ax.set_title(title+'\n', fontsize=fontsize)
+    ax.set_title(title+'\n', fontsize=fontsize+2)
     ax.set_xlabel('Prior log$_{10}$(odds)', fontsize=fontsize)
     ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
 
