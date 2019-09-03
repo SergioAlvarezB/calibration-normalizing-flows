@@ -16,6 +16,9 @@ def plot_prob_simplex(probs,
                       temp=None,
                       fontsize=12,
                       labels=[0, 1, 2]):
+    """Makes scatter plot on the 3-simplex. ´´probs´ is a (n, 3) np.array
+    where each row is expected to sum to 1.
+    """
 
     # Apply temp scaling if passed
     if temp is not None:
@@ -61,7 +64,8 @@ def plot_pdf_simplex(probs,
                      temp=None,
                      fontsize=12,
                      labels=[0, 1, 2]):
-    """Makes heatmap ternary plot of the estimated probability density."""
+    """Makes heatmap ternary plot of the estimated probability density.
+    Rows of `probs` are expected to sum up to 1."""
 
     # Apply temp scaling if passed
     if temp is not None:
@@ -107,6 +111,11 @@ def reliability_diagram(probs,
                         label='Output',
                         optimum=True,
                         title='Reliability Diagram'):
+    """Plots reliability diagram. See:
+    Chuan Guo, Geoff Pleiss, Yu Sun and Kilian Q. Weinberger.
+    On Calibration of Modern Nerual Networks. arXiv preprint
+    arXiv:1706.04599, 2017.
+    """
 
     if probs.ndim > 1:
         preds = np.argmax(probs, axis=1)
@@ -182,6 +191,10 @@ def reliability_plot(probs,
                      labels=None,
                      optimum=True,
                      title='Reliability Plot'):
+    """Extension of reliability diagrams to multiple classifiers.
+    Line plots are used instead of bars and the center probability of each bin
+    is used instead of average confidence.
+    """
 
     if not isinstance(probs, list):
         probs = [probs]
@@ -249,6 +262,11 @@ def ECE_plot(like_ratios,
              range=[-2.5, 2.5],
              ref=True):
 
+    """Makes ECE plot. See:
+    Daniel Ramos, Javier Franco-Pedroso, Alicia Lozano-Diez
+    and Joaquin Gonzalez-Rodriguez. Deconstructing Cross-Entropy
+    for Probabilistic Binary Classiﬁers. Entropy 2018, 20, 208.
+    """
     n_classes = 2
     if like_ratios.ndim == 2:
 
@@ -263,8 +281,6 @@ def ECE_plot(like_ratios,
             cal_ratios = cal_ratios.ravel()
         target = target.ravel()
 
-    # ###### TODO extension multiclass ########
-    # neutral_ratio = (1. / (n_classes - 1))
     neutral_ratio = 1
 
     logprior_axis = np.linspace(range[0], range[1], num=bins)

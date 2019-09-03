@@ -5,7 +5,10 @@ from .ops import onehot_encode
 
 def neg_log_likelihood(probs, target):
     """Computes the cross_entropy between pred and target."""
-    # TODO support binary classification
+
+    if probs.ndim < 2 or probs.shape[1] == 1:
+        probs = np.stack(1. - probs.ravel(), probs.ravel())
+
     if target.shape != probs.shape:
         target = onehot_encode(target)
 
@@ -13,6 +16,11 @@ def neg_log_likelihood(probs, target):
 
 
 def empirical_cross_entropy(like_ratios, target, prior):
+    """Computes empirical cross entropy. See:
+    Daniel Ramos, Javier Franco-Pedroso, Alicia Lozano-Diez
+    and Joaquin Gonzalez-Rodriguez. Deconstructing Cross-Entropy
+    for Probabilistic Binary Classiﬁers. Entropy 2018, 20, 208.
+    """
     prior_odds = prior/(1. - prior)
     post_ratios = like_ratios*prior_odds
     emp_prior = np.sum(target)
@@ -30,7 +38,7 @@ def expected_calibration_error(probs, target, bins=20):
     On Calibration of Modern Nerual Networks. arXiv preprint
     arXiv:1706.04599, 2017.
 
-    Implemetations details taken from authors oficial repository:
+    Implemetation details taken from authors oficial repository:
     https://github.com/gpleiss/temperature_scaling.
     """
 
