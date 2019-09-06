@@ -1,11 +1,21 @@
 import ternary
 import numpy as np
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 from scipy import stats
 from scipy.special import softmax
 
 from .ops import project_sequence, project_point, onehot_encode
 from .metrics import empirical_cross_entropy
+
+# Regions ListedColormap
+sequ = np.linspace(0, 1, 256)
+new_colors = np.zeros((256*3, 3))
+for i in range(3):
+    new_colors[256*i:256*(i+1), i] = sequ
+
+REGS_CMAP = ListedColormap(new_colors)
 
 
 def plot_prob_simplex(probs,
@@ -63,9 +73,17 @@ def plot_pdf_simplex(probs,
                      title='Estimated PDF',
                      temp=None,
                      fontsize=12,
-                     labels=[0, 1, 2]):
+                     labels=[0, 1, 2],
+                     target=None):
     """Makes heatmap ternary plot of the estimated probability density.
     Rows of `probs` are expected to sum up to 1."""
+
+    # Create plot
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.axis('off')
+    figure, tax = ternary.figure(ax=ax, scale=scale)
 
     # Apply temp scaling if passed
     if temp is not None:
@@ -73,22 +91,84 @@ def plot_pdf_simplex(probs,
         probs = softmax(logits/temp, axis=1)
 
     cart_probs = project_sequence(probs)
-    kernel = stats.gaussian_kde(cart_probs.T)
 
-    def estimated_pdf(p):
-        p = project_point(np.array(p))
-        return kernel(p)[0]
+    if target is not None:
+        if target.ndim == 2:
+            target = np.argmax(target, axis=1)
+        kernels = [stats.gaussian_kde(cart_probs[target == i, :].T)
+                   for i in range(3)]
 
+        def estimated_pdf(p):
+            p = project_point(np.array(p))
+            pred = softmax(np.array([kernels[i](p)[0] for i in range(3)]))
+            t = np.argmax(pred)
+            return (pred[t] + t)/3.
+
+        tax.heatmapf(
+                estimated_pdf,
+                boundary=True,
+                style="hexagonal",
+                cmap=REGS_CMAP,
+                colorbar=False)
+
+        # Create legend
+        tax.legend(handles=[
+                mpatches.Patch(color='red', label=labels[0]),
+                mpatches.Patch(color='green', label=labels[1]),
+                mpatches.Patch(color='blue', label=labels[2])
+                ])
+
+
+    else:
+        kernel = stats.gaussian_kde(cart_probs.T)
+
+        def estimated_pdf(p):
+            p = project_point(np.array(p))
+            return kernel(p)[0]
+
+        tax.heatmapf(
+                estimated_pdf,
+                boundary=True,
+                style="hexagonal",
+                cmap=plt.get_cmap('gnuplot'),
+                colorbar=False)
+
+    tax.boundary(linewidth=2.0)
+    tax.set_title(title+'\n\n', fontsize=fontsize+2)
+    tax.right_corner_label("P($\\theta$={})".format(labels[0]),
+                           fontsize=fontsize)
+    tax.top_corner_label("P($\\theta$={})".format(labels[1]),
+                         fontsize=fontsize)
+    tax.left_corner_label("P($\\theta$={})".format(labels[2]),
+                          fontsize=fontsize)
+
+    return tax
+
+
+def plot_cal_regions_ternary(calibrator,
+                             ax=None,
+                             scale=50,
+                             title='Calibrated output',
+                             fontsize=12,
+                             labels=[0, 1, 2]):
+    # Create plot
     if ax is None:
         fig, ax = plt.subplots()
 
     ax.axis('off')
     figure, tax = ternary.figure(ax=ax, scale=scale)
+
+    def wrapped_cal(p):
+        p = np.log(np.array(p)+1e-7).reshape([1, 3])
+        pred = calibrator.predict(p)
+        t = np.argmax(pred)
+        return (pred[0, t] + t)/3.
+
     tax.heatmapf(
-            estimated_pdf,
+            wrapped_cal,
             boundary=True,
             style="hexagonal",
-            cmap=plt.get_cmap('gnuplot'),
+            cmap=REGS_CMAP,
             colorbar=False)
 
     tax.boundary(linewidth=2.0)
