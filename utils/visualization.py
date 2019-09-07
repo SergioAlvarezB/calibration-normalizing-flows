@@ -160,7 +160,10 @@ def plot_cal_regions_ternary(calibrator,
 
     def wrapped_cal(p):
         p = np.log(np.array(p)+1e-7).reshape([1, 3])
-        pred = calibrator.predict(p)
+        if hasattr(calibrator, '__call__'):
+            pred = calibrator(p)
+        else:
+            pred = calibrator.predict(p)
         t = np.argmax(pred)
         return (pred[0, t] + t)/3.
 
