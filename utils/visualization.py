@@ -10,7 +10,7 @@ from .ops import project_sequence, project_point, onehot_encode
 from .metrics import empirical_cross_entropy
 
 # Regions ListedColormap
-sequ = np.linspace(0, 1, 256)
+sequ = np.linspace(0.33, 1, 256)
 new_colors = np.zeros((256*3, 3))
 for i in range(3):
     new_colors[256*i:256*(i+1), i] = sequ
@@ -170,6 +170,13 @@ def plot_cal_regions_ternary(calibrator,
             style="hexagonal",
             cmap=REGS_CMAP,
             colorbar=False)
+
+    # Create legend
+    tax.legend(handles=[
+            mpatches.Patch(color='red', label=labels[0]),
+            mpatches.Patch(color='green', label=labels[1]),
+            mpatches.Patch(color='blue', label=labels[2])
+            ])
 
     tax.boundary(linewidth=2.0)
     tax.set_title(title+'\n\n', fontsize=fontsize+2)

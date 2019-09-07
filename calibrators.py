@@ -101,7 +101,9 @@ class PAVCalibrator(Calibrator):
 
         # We use 1 vs rest approach, perform a
         # isotonic regression for each class
-        self.models = [IsotonicRegression(y_min=0, y_max=1)
+        self.models = [IsotonicRegression(y_min=0,
+                                          y_max=1,
+                                          out_of_bounds='clip')
                        for _ in range(self.n_classes)]
 
         self.fit(self.logits, self.target)
@@ -109,17 +111,14 @@ class PAVCalibrator(Calibrator):
     def fit(self, logits, target):
 
         probs = softmax(logits, axis=1)
-        for cls in range(self.n_classes):
-            model = self.models[cls]
-
+        for cls, model in enumerate(self.models):
             x, y = probs[:, cls], target[:, cls]
             model.fit(x, y)
 
     def predict(self, logits):
         probs = softmax(logits, axis=1)
         cal_probs = np.zeros(logits.shape)
-        for cls in range(self.n_classes):
-            model = self.models[cls]
+        for cls, model in enumerate(self.models):
             cal_probs[:, cls] = model.predict(probs[:, cls])
 
         cal_probs /= np.sum(cal_probs, axis=1, keepdims=True)
