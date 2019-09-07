@@ -32,7 +32,7 @@ def empirical_cross_entropy(like_ratios, target, prior):
     return ECE
 
 
-def expected_calibration_error(probs, target, bins=20):
+def expected_calibration_error(probs, target, bins=15):
     """Computes Expected Calibration Error (ECE) as defined in:
     Chuan Guo, Geoff Pleiss, Yu Sun and Kilian Q. Weinberger.
     On Calibration of Modern Nerual Networks. arXiv preprint
