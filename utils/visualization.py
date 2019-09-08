@@ -118,7 +118,6 @@ def plot_pdf_simplex(probs,
                 mpatches.Patch(color='blue', label=labels[2])
                 ])
 
-
     else:
         kernel = stats.gaussian_kde(cart_probs.T)
 
@@ -296,7 +295,6 @@ def reliability_plot(probs,
         probs = [prob[np.arange(prob.shape[0]), pred]
                  for prob, pred in zip(probs, preds)]
 
-
     else:
         preds = [np.around(prob) for prob in probs]
         probs = [np.abs((1-pred) - prob)
@@ -432,8 +430,9 @@ def ECE_plot_multi(like_ratios,
                    ax=None,
                    bins=100,
                    fontsize=12,
+                   labels=None,
                    title='ECE plot',
-                   range=[-2.5, 2.5],
+                   lims=[-2.5, 2.5],
                    ref=True):
 
     """Makes ECE plot. See:
@@ -444,8 +443,8 @@ def ECE_plot_multi(like_ratios,
 
     neutral_ratio = 1
 
-    logprior_axis = np.linspace(range[0], range[1], num=bins)
-    comp_ECE = np.zeros(logprior_axis[0].shape, len(like_ratios))
+    logprior_axis = np.linspace(lims[0], lims[1], num=bins)
+    comp_ECE = np.zeros((logprior_axis.size, len(like_ratios)))
     if ref:
         ref_ECE = np.zeros(logprior_axis.shape)
         ref_LR = np.ones(like_ratios[0].shape) * neutral_ratio
@@ -464,31 +463,25 @@ def ECE_plot_multi(like_ratios,
     if ax is None:
         fig, ax = plt.subplots()
 
-    ax.plot(logprior_axis, base_ECE, 'r')
+    if labels is None:
+        labels = ['LR + {:d}'.format(i) for i in range(len(like_ratios))]
+
+    for i in range(len(like_ratios)):
+        ax.plot(logprior_axis, comp_ECE[:, i], label=labels[i])
 
     if ref:
-        ax.plot(logprior_axis, ref_ECE, ':k')
-
-    if cal_ratios is not None:
-        ax.plot(logprior_axis, cal_ECE, '--b')
+        ax.plot(logprior_axis, ref_ECE, ':k',
+                label='LR={:.1f}'.format(neutral_ratio))
 
     ax.plot([np.log10(neutral_ratio), np.log10(neutral_ratio)], [0, 1], '--k')
-
-    labels = ['LR values']
-
-    if ref:
-        labels += ['LR={:.3f}'.format(neutral_ratio)]
-
-    if cal_ratios is not None:
-        labels += ['After Calibration']
 
     ax.set_title(title+'\n', fontsize=fontsize+2)
     ax.set_xlabel('Prior log$_{10}$(odds)', fontsize=fontsize)
     ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
 
-    ax.set_ylim(0, 1)
-    ax.set_xlim(range[0], range[1])
+    ax.set_ylim(0, min(1., comp_ECE.max()*1.3))
+    ax.set_xlim(lims[0], lims[1])
 
-    ax.legend(labels, loc='upper right')
+    ax.legend(loc='upper right')
 
     return ax
