@@ -110,13 +110,13 @@ class PAVCalibrator(Calibrator):
 
     def fit(self, logits, target):
 
-        probs = softmax(logits, axis=1)
+        probs = softmax(logits, axis=1).astype(np.float)
         for cls, model in enumerate(self.models):
             x, y = probs[:, cls], target[:, cls]
             model.fit(x, y)
 
     def predict(self, logits):
-        probs = softmax(logits, axis=1)
+        probs = softmax(logits, axis=1).astype(np.float)
         cal_probs = np.zeros(logits.shape)
         for cls, model in enumerate(self.models):
             cal_probs[:, cls] = model.predict(probs[:, cls])

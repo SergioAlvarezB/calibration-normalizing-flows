@@ -425,3 +425,70 @@ def ECE_plot(like_ratios,
     ax.legend(labels, loc='upper right')
 
     return ax
+
+
+def ECE_plot_multi(like_ratios,
+                   target,
+                   ax=None,
+                   bins=100,
+                   fontsize=12,
+                   title='ECE plot',
+                   range=[-2.5, 2.5],
+                   ref=True):
+
+    """Makes ECE plot. See:
+    Daniel Ramos, Javier Franco-Pedroso, Alicia Lozano-Diez
+    and Joaquin Gonzalez-Rodriguez. Deconstructing Cross-Entropy
+    for Probabilistic Binary Classiﬁers. Entropy 2018, 20, 208.
+    """
+
+    neutral_ratio = 1
+
+    logprior_axis = np.linspace(range[0], range[1], num=bins)
+    comp_ECE = np.zeros(logprior_axis[0].shape, len(like_ratios))
+    if ref:
+        ref_ECE = np.zeros(logprior_axis.shape)
+        ref_LR = np.ones(like_ratios[0].shape) * neutral_ratio
+
+    # Compute ECE values
+    for i, logprior in enumerate(logprior_axis):
+        odds = 10**(logprior)
+        prior = odds/(1. + odds)
+        for j, like_ratio in enumerate(like_ratios):
+            comp_ECE[i, j] = empirical_cross_entropy(like_ratio, target, prior)
+
+        if ref:
+            ref_ECE[i] = empirical_cross_entropy(ref_LR, target, prior)
+
+    # Build plot
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    ax.plot(logprior_axis, base_ECE, 'r')
+
+    if ref:
+        ax.plot(logprior_axis, ref_ECE, ':k')
+
+    if cal_ratios is not None:
+        ax.plot(logprior_axis, cal_ECE, '--b')
+
+    ax.plot([np.log10(neutral_ratio), np.log10(neutral_ratio)], [0, 1], '--k')
+
+    labels = ['LR values']
+
+    if ref:
+        labels += ['LR={:.3f}'.format(neutral_ratio)]
+
+    if cal_ratios is not None:
+        labels += ['After Calibration']
+
+    ax.set_title(title+'\n', fontsize=fontsize+2)
+    ax.set_xlabel('Prior log$_{10}$(odds)', fontsize=fontsize)
+    ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
+
+    ax.set_ylim(0, 1)
+    ax.set_xlim(range[0], range[1])
+
+    ax.legend(labels, loc='upper right')
+
+    return ax
