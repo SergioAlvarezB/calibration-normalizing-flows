@@ -26,7 +26,7 @@ def plot_prob_simplex(probs,
                       temp=None,
                       fontsize=12,
                       labels=[0, 1, 2]):
-    """Makes scatter plot on the 3-simplex. ´´probs´ is a (n, 3) np.array
+    """Makes scatter plot on the 3-simplex. ´probs´ is a (n, 3) np.array
     where each row is expected to sum to 1.
     """
 

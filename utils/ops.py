@@ -41,6 +41,7 @@ def project_sequence_onsimplex(points):
 
 def onehot_encode(target):
     """One-hot encodes the label vector `target`."""
+    target = np.array(target).astype(np.int32)
 
     n_samples, n_labels = len(target), np.max(target)+1
 
