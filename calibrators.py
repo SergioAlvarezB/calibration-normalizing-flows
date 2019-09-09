@@ -22,6 +22,9 @@ class Calibrator:
 
         self.log_priors = self._get_log_priors(target)
 
+    def __call__(self, logits):
+        return self.predict(logits)
+
     def _get_log_priors(self, target):
         priors = np.sum(target, axis=0)
         priors = priors/np.sum(priors)
