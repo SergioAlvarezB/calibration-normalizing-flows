@@ -3,6 +3,7 @@
 **/__pycache__
 **/.ipynb_checkpoints
 
-# Ignore unready projects
+# Ignore data
 cifar-10
 pretrained-models
+images
