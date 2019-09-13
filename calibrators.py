@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 from sklearn.isotonic import IsotonicRegression
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
+from tensorflow.keras import backend as K
 
 from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow, NiceFlow_v2
@@ -89,7 +90,7 @@ class MLRCalibrator(Calibrator):
                 jac=grads)
 
         self.alpha = self.optim.x[0]
-        self.gammma = self.optim.x[1:]
+        self.gamma = self.optim.x[1:]
 
     def predict(self, logits):
         tlogits = self.alpha*logits + self.gamma
