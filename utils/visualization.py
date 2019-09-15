@@ -171,7 +171,9 @@ def plot_cal_regions_ternary(calibrator,
             boundary=True,
             style="hexagonal",
             cmap=REGS_CMAP,
-            colorbar=False)
+            colorbar=False,
+            vmin=0.,
+            vmax=1.)
 
     # Create legend
     tax.legend(handles=[
@@ -264,7 +266,7 @@ def reliability_diagram(probs,
                hatch='/')
 
     ax.legend(loc='upper left')
-    ax.set_title(title+'\n\n', fontsize=fontsize+2)
+    ax.set_title(title, fontsize=fontsize+2)
     ax.set_xlabel('Predicted probability', fontsize=fontsize)
     ax.set_ylabel('Empiric probability', fontsize=fontsize)
     ax.set_xlim(0, 1)
@@ -413,7 +415,7 @@ def ECE_plot(like_ratios,
     if cal_ratios is not None:
         labels += ['After Calibration']
 
-    ax.set_title(title+'\n', fontsize=fontsize+2)
+    ax.set_title(title, fontsize=fontsize+2)
     ax.set_xlabel('Prior log$_{10}$(odds)', fontsize=fontsize)
     ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
 
@@ -475,7 +477,7 @@ def ECE_plot_multi(like_ratios,
 
     ax.plot([np.log10(neutral_ratio), np.log10(neutral_ratio)], [0, 1], '--k')
 
-    ax.set_title(title+'\n', fontsize=fontsize+2)
+    ax.set_title(title, fontsize=fontsize+2)
     ax.set_xlabel('Prior log$_{10}$(odds)', fontsize=fontsize)
     ax.set_ylabel('Empirical cross-entropy', fontsize=fontsize)
 
