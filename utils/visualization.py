@@ -164,7 +164,7 @@ def plot_cal_regions_ternary(calibrator,
         else:
             pred = calibrator.predict(p)
         t = np.argmax(pred)
-        return (pred[0, t] + t)/3.
+        return (pred[0, t]-0.1 + t)/3.
 
     tax.heatmapf(
             wrapped_cal,
