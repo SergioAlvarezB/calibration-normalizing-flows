@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from scipy import stats
 from scipy.special import softmax
+from ternary.helpers import normalize, simplex_iterator
 
 from .ops import project_sequence, project_point, onehot_encode
 from .metrics import empirical_cross_entropy
@@ -157,6 +158,27 @@ def plot_cal_regions_ternary(calibrator,
     ax.axis('off')
     figure, tax = ternary.figure(ax=ax, scale=scale)
 
+    dataix = {}
+    probs = []
+    ix = 0
+    for i, j, k in simplex_iterator(scale=scale):
+        probs.append(normalize([i, j, k]))
+        dataix[(i, j, k)] = ix
+        ix += 1
+
+    probs = np.array(probs)
+    logits = np.log(probs + 1e-7)
+    pred = calibrator(logits)
+    t = np.argmax(pred, axis=1)
+
+    colors = (np.max(pred, axis=1)-0.1 + t)/3.
+
+    data = {}
+    for i, j, k in simplex_iterator(scale=scale):
+        data[(i, j)] = colors[dataix[(i, j, k)]]
+
+
+    """
     def wrapped_cal(p):
         p = np.log(np.array(p)+1e-7).reshape([1, 3])
         if hasattr(calibrator, '__call__'):
@@ -165,10 +187,11 @@ def plot_cal_regions_ternary(calibrator,
             pred = calibrator.predict(p)
         t = np.argmax(pred)
         return (pred[0, t]-0.1 + t)/3.
+    """
 
-    tax.heatmapf(
-            wrapped_cal,
-            boundary=True,
+    tax.heatmap(
+            data,
+            scale,
             style="hexagonal",
             cmap=REGS_CMAP,
             colorbar=False,
