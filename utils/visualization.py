@@ -168,6 +168,7 @@ def plot_cal_regions_ternary(calibrator,
 
     probs = np.array(probs)
     logits = np.log(probs + 1e-7)
+    logits -= np.mean(logits, axis=1, keepdims=True)
     pred = calibrator(logits)
     t = np.argmax(pred, axis=1)
 
@@ -176,18 +177,6 @@ def plot_cal_regions_ternary(calibrator,
     data = {}
     for i, j, k in simplex_iterator(scale=scale):
         data[(i, j)] = colors[dataix[(i, j, k)]]
-
-
-    """
-    def wrapped_cal(p):
-        p = np.log(np.array(p)+1e-7).reshape([1, 3])
-        if hasattr(calibrator, '__call__'):
-            pred = calibrator(p)
-        else:
-            pred = calibrator.predict(p)
-        t = np.argmax(pred)
-        return (pred[0, t]-0.1 + t)/3.
-    """
 
     tax.heatmap(
             data,

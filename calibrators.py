@@ -163,10 +163,10 @@ class NiceCalibrator(Calibrator):
     def fit(self, logits, target, epochs=1000, batch_size=100):
 
         # Normalize input to net.
-        probs = softmax(logits, axis=1)
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         h = self.train_model.fit(
-                probs,
+                logits,
                 target,
                 epochs=epochs,
                 batch_size=batch_size,
@@ -176,9 +176,9 @@ class NiceCalibrator(Calibrator):
     def predict_logits(self, logits):
 
         # Normalize input to net.
-        probs = softmax(logits, axis=1)
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
 
-        return self.flow.forward_model.predict(probs, batch_size=100)
+        return self.flow.forward_model.predict(logits, batch_size=100)
 
     def predict(self, logits):
         logits = self.predict_logits(logits)
