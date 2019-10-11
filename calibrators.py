@@ -63,29 +63,29 @@ class MatrixScalingCalibrator(Calibrator):
         super().__init__(logits, target)
         self.n = logits.shape[1]  # Number of input dimensions.
         self.W = np.zeros([self.n, self.n])
-        self.b = 0.
+        self.b = np.zeros(self.n)
 
         self.fit(self.logits, self.target)
 
     def fit(self, logits, target):
 
         def target_func(x, logits, target):
-            tlogits = logits @ x[1:].reshape([self.n, self.n]) + x[0]
+            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) + x[:self.n]
             probs = softmax(tlogits, axis=1)
             return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
         def grads(x, logits, target):
             grad = np.zeros(x.shape)
-            tlogits = logits @ x[1:].reshape([self.n, self.n]) + x[0]
+            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) + x[:self.n]
             probs = softmax(tlogits, axis=1)
             dW = np.mean((probs-target).reshape([-1, self.n, 1])
                          @ logits.reshape([-1, 1, self.n]), axis=0).T
-            db = np.mean((probs-target))
-            grad[0], grad[1:] = db, dW.ravel()
+            db = np.mean((probs-target), axis=0)
+            grad[:self.n], grad[self.n:] = db, dW.ravel()
 
             return grad
 
-        x0 = np.concatenate(([self.b], self.W.ravel()))
+        x0 = np.concatenate((self.b, self.W.ravel()))
 
         self.optim = minimize(
                 target_func,
@@ -94,8 +94,8 @@ class MatrixScalingCalibrator(Calibrator):
                 method='CG',
                 jac=grads)
 
-        self.b = self.optim.x[0]
-        self.W = self.optim.x[1:].reshape([self.n, self.n])
+        self.b = self.optim.x[:self.n]
+        self.W = self.optim.x[self.n:].reshape([self.n, self.n])
 
     def predict(self, logits):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
@@ -109,29 +109,30 @@ class VectorScalingCalibrator(Calibrator):
 
     def __init__(self, logits, target):
         super().__init__(logits, target)
-        self.W = np.zeros(logits.shape[1])
-        self.b = 0.
+        self.n = logits.shape[1]  # Number of input dimensions.
+        self.W = np.zeros(self.n)
+        self.b = np.zeros(self.n)
 
         self.fit(self.logits, self.target)
 
     def fit(self, logits, target):
 
         def target_func(x, logits, target):
-            tlogits = x[1:] * logits + x[0]
+            tlogits = x[self.n:] * logits + x[:self.n]
             probs = softmax(tlogits, axis=1)
             return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
         def grads(x, logits, target):
             grad = np.zeros(x.shape)
-            tlogits = x[1:] * logits + x[0]
+            tlogits = x[self.n:] * logits + x[:self.n]
             probs = softmax(tlogits, axis=1)
             dW = np.mean((probs-target) * logits, axis=0)
             db = np.mean((probs-target))
-            grad[0], grad[1:] = db, dW
+            grad[:self.n], grad[self.n:] = db, dW
 
             return grad
 
-        x0 = np.concatenate(([self.b], self.W))
+        x0 = np.concatenate((self.b, self.W))
 
         self.optim = minimize(
                 target_func,
@@ -140,8 +141,8 @@ class VectorScalingCalibrator(Calibrator):
                 method='CG',
                 jac=grads)
 
-        self.b = self.optim.x[0]
-        self.W = self.optim.x[1:]
+        self.b = self.optim.x[:self.n]
+        self.W = self.optim.x[self.n:]
 
     def predict(self, logits):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
