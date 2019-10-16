@@ -40,6 +40,15 @@ class Calibrator:
         return np.log(probs) - self.log_priors
 
 
+class DummyCalibrator(Calibrator):
+    """Implements uncalibrated model."""
+    def __init__(self, logits, target):
+        super().__init__(logits, target)
+
+    def predict(self, logits):
+        return softmax(logits, axis=1)
+
+
 class TempScalingCalibrator(Calibrator):
 
     def __init__(self, logits, target):
