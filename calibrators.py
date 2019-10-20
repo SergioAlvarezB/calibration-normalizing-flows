@@ -8,6 +8,7 @@ from tensorflow.keras import backend as K
 
 from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow, NiceFlow_v2
+from flows.normalizing_flows import PlanarFlow
 
 
 class Calibrator:
@@ -289,6 +290,51 @@ class NiceCalibrator(Calibrator):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         return self.flow.forward_model.predict(logits, batch_size=100)
+
+    def predict(self, logits):
+        logits = self.predict_logits(logits)
+        probs = softmax(logits, axis=1)
+        return probs
+
+
+class PlanarFlowCalibrator(Calibrator):
+
+    def __init__(self, logits, target, **kwargs):
+        super().__init__(logits, target)
+
+        self.flow = PlanarFlow(self.n_classes, kwargs.get('layers', 5))
+
+        self.train_model = Model(
+            inputs=self.flow.forward_model.input,
+            outputs=Activation('softmax')(self.flow.forward_model.output)
+        )
+        self.train_model.compile(optimizer=kwargs.get('optimizer', 'adam'),
+                                 loss='categorical_crossentropy')
+
+        self.history = self.fit(self.logits,
+                                self.target,
+                                epochs=kwargs.get('epochs', 1000),
+                                batch_size=kwargs.get('batch_size', 128))
+
+    def fit(self, logits, target, epochs, batch_size):
+
+        # Normalize input to net.
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
+
+        h = self.train_model.fit(
+                logits,
+                target,
+                epochs=epochs,
+                batch_size=batch_size,
+                verbose=0)
+        return h
+
+    def predict_logits(self, logits):
+
+        # Normalize input to net.
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
+
+        return self.flow.forward_model.predict(logits, batch_size=128)
 
     def predict(self, logits):
         logits = self.predict_logits(logits)
