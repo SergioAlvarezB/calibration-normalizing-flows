@@ -48,7 +48,7 @@ def onehot_encode(target):
     one_hot = np.zeros((n_samples, n_labels))
     one_hot[np.arange(n_samples), target] = 1.
 
-    return one_hot
+    return one_hot.astype(np.int32)
 
 
 def detection_log_likelihood_ratios(logits, priors):
