@@ -56,7 +56,7 @@ def expected_calibration_error(probs, target, bins=15):
     # Compute expected calibration error
     width = 1./bins
     EcalE = 0
-    empiric_probs = np.zeros(bins)
+
     for i in range(bins):
         low, high = i*width, (i+1)*width
 

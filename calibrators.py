@@ -4,7 +4,6 @@ from scipy.optimize import minimize
 from sklearn.isotonic import IsotonicRegression
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
-from tensorflow.keras import backend as K
 
 from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow, NiceFlow_v2
@@ -43,6 +42,7 @@ class Calibrator:
 
 class DummyCalibrator(Calibrator):
     """Implements uncalibrated model."""
+
     def __init__(self, logits, target):
         super().__init__(logits, target)
 
@@ -80,13 +80,15 @@ class MatrixScalingCalibrator(Calibrator):
     def fit(self, logits, target):
 
         def target_func(x, logits, target):
-            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) + x[:self.n]
+            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) \
+                + x[:self.n]
             probs = softmax(tlogits, axis=1)
             return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
         def grads(x, logits, target):
             grad = np.zeros(x.shape)
-            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) + x[:self.n]
+            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) \
+                + x[:self.n]
             probs = softmax(tlogits, axis=1)
             dW = np.mean((probs-target).reshape([-1, self.n, 1])
                          @ logits.reshape([-1, 1, self.n]), axis=0).T

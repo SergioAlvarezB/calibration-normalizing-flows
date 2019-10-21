@@ -363,16 +363,13 @@ def ECE_plot(like_ratios,
              title='ECE plot',
              range=[-2.5, 2.5],
              ref=True):
-
     """Makes ECE plot. See:
     Daniel Ramos, Javier Franco-Pedroso, Alicia Lozano-Diez
     and Joaquin Gonzalez-Rodriguez. Deconstructing Cross-Entropy
     for Probabilistic Binary Classiﬁers. Entropy 2018, 20, 208.
     """
-    n_classes = 2
-    if like_ratios.ndim == 2:
 
-        n_classes = max(like_ratios.shape[1], 2)
+    if like_ratios.ndim == 2:
 
         if target.shape != like_ratios.shape:
             target = onehot_encode(target)
@@ -448,7 +445,6 @@ def ECE_plot_multi(like_ratios,
                    title='ECE plot',
                    lims=[-2.5, 2.5],
                    ref=True):
-
     """Makes ECE plot. See:
     Daniel Ramos, Javier Franco-Pedroso, Alicia Lozano-Diez
     and Joaquin Gonzalez-Rodriguez. Deconstructing Cross-Entropy

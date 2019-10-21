@@ -1,8 +1,5 @@
 import os
-import sys
 import pickle
-import random
-import collections
 
 import numpy as np
 
