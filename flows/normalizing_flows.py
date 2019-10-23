@@ -95,6 +95,10 @@ class PlanarFlow:
 
         return Model(inputs=inp, outputs=x)
 
+    def _flow_backward(self, input_shape):
+        # TODO Implement method.
+        raise ValueError('Not Implemented method')
+
 
 class RadialFlow:
     def __init__(self, input_shape, layers=5):
@@ -109,3 +113,7 @@ class RadialFlow:
             x = RadialLayer()(x)
 
         return Model(inputs=inp, outputs=x)
+
+    def _flow_backward(self, input_shape):
+        # TODO Implement method.
+        raise ValueError('Not Implemented method')
