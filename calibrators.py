@@ -6,7 +6,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
 
 from utils.ops import onehot_encode, optim_temperature
-from flows.nice import NiceFlow, NiceFlow_v2
+from flows.nice import NiceFlow, NiceFlow_v2, NiceFlow_v3
 from flows.realNVP import RealNvpFlow
 from flows.normalizing_flows import PlanarFlow, RadialFlow
 
@@ -262,8 +262,10 @@ class NiceCalibrator(Calibrator):
                      if k in ['layers', 'hidden_size', 'activation']}
         if kwargs.get('version', 1) == 1:
             self.flow = NiceFlow(input_dim=self.n_classes, **flow_args)
-        else:
+        elif kwargs.get('version', 1) == 2:
             self.flow = NiceFlow_v2(input_dim=self.n_classes, **flow_args)
+        else:
+            self.flow = NiceFlow_v3(input_dim=self.n_classes, **flow_args)
 
         self.train_model = self._train_model()
         self.train_model.compile(optimizer=kwargs.get('optimizer', 'adam'),

@@ -1,3 +1,5 @@
+import numpy as np
+
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Layer, Concatenate, Dense, Input
 import tensorflow.keras.backend as K
@@ -72,6 +74,27 @@ class AddCouplingLayer(Layer):
             x1 = x1 + self.coupling_func(x2)*(-1 if self.inverse else 1)
 
         return self.concatenate([x1, x2])
+
+    def compute_output_shape(self, input_shape):
+        return input_shape
+
+
+class AddCouplingLayer_v2(Layer):
+    def __init__(self, coupling_function, mask, inverse=False, **kwargs):
+        self.coupling_func = coupling_function
+        self.mask = mask
+        self.inverse = inverse
+
+        super(AddCouplingLayer_v2, self).__init__(**kwargs)
+
+    def call(self, inputs):
+        mask = K.constant(self.mask)
+        m_inputs = mask * inputs
+        if self.inverse:
+            y = m_inputs + (1-mask)*(inputs - self.coupling_func(m_inputs))
+        else:
+            y = m_inputs + (1-mask)*(inputs + self.coupling_func(m_inputs))
+        return y
 
     def compute_output_shape(self, input_shape):
         return input_shape
@@ -183,6 +206,61 @@ class NiceFlow_v2:
             coup_funcs.append(
                 MLP(inp_dim,
                     output_dim=out_dim,
+                    activation=activation,
+                    hidden_size=hidden_size)
+                )
+        return coup_funcs
+
+
+class NiceFlow_v3:
+    def __init__(self,
+                 input_dim,
+                 layers=4,
+                 hidden_size=None,
+                 activation='relu'):
+        self.input_dim = input_dim
+        self.layers = layers
+
+        if hidden_size is None:
+            hidden_size = [input_dim]
+
+        self.coup_funcs = self._get_coup_funcs(hidden_size, activation)
+        self.forward_model = self._flow_forward()
+        self.inverse_model = self._flow_inverse()
+
+    def _flow_forward(self):
+        b = np.zeros((1, self.input_dim))
+        b[:, self.input_dim//2:] = 1.
+
+        inp = Input(shape=(self.input_dim,))
+        x = inp
+        for l, h in enumerate(self.coup_funcs):
+            x = AddCouplingLayer_v2(h, b)(x)
+            b = np.flip(b)
+
+        return Model(inputs=inp, outputs=x)
+
+    def _flow_inverse(self):
+        b = np.zeros((1, self.input_dim))
+        b[:, self.input_dim//2:] = 1.
+
+        if self.layers % 2 == 0:
+            b = np.flip(b)
+
+        inp = Input(shape=(self.input_dim,))
+        x = inp
+        for l, h in enumerate(self.coup_funcs):
+            x = AddCouplingLayer_v2(h, b, inverse=True)(x)
+            b = np.flip(b)
+
+        return Model(inputs=inp, outputs=x)
+
+    def _get_coup_funcs(self, hidden_size, activation):
+        coup_funcs = []
+        for l in range(self.layers):
+            coup_funcs.append(
+                MLP(self.input_dim,
+                    self.input_dim,
                     activation=activation,
                     hidden_size=hidden_size)
                 )
