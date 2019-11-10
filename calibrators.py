@@ -260,9 +260,9 @@ class NiceCalibrator(Calibrator):
     def _build_flow(self, kwargs):
         flow_args = {k: v for k, v in kwargs.items()
                      if k in ['layers', 'hidden_size', 'activation']}
-        if kwargs.get('version', 1) == 1:
+        if kwargs.get('version', 3) == 1:
             self.flow = NiceFlow(input_dim=self.n_classes, **flow_args)
-        elif kwargs.get('version', 1) == 2:
+        elif kwargs.get('version', 3) == 2:
             self.flow = NiceFlow_v2(input_dim=self.n_classes, **flow_args)
         else:
             self.flow = NiceFlow_v3(input_dim=self.n_classes, **flow_args)
