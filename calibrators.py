@@ -33,12 +33,12 @@ class Calibrator:
 
         return np.log(priors)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         raise NotImplementedError
 
-    def predict_RL(self, logits):
-        probs = self.predict(logits)
-        return np.log(probs) - self.log_priors
+    def predict(self, logits):
+        probs = self.predict_post(logits)
+        return softmax(np.log(probs) - self.log_priors, axis=1)
 
 
 class DummyCalibrator(Calibrator):
@@ -47,7 +47,7 @@ class DummyCalibrator(Calibrator):
     def __init__(self, logits, target):
         super().__init__(logits, target)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         return softmax(logits, axis=1)
 
 
@@ -61,7 +61,7 @@ class TempScalingCalibrator(Calibrator):
     def fit(self, logits, target):
         self.T = optim_temperature(logits, target)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
 
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
@@ -110,7 +110,7 @@ class MatrixScalingCalibrator(Calibrator):
         self.b = self.optim.x[:self.n]
         self.W = self.optim.x[self.n:].reshape([self.n, self.n])
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         tlogits = logits @ self.W + self.b
@@ -157,7 +157,7 @@ class VectorScalingCalibrator(Calibrator):
         self.b = self.optim.x[:self.n]
         self.W = self.optim.x[self.n:]
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         tlogits = self.W * logits + self.b
@@ -203,8 +203,7 @@ class MLRCalibrator(Calibrator):
         self.alpha = self.optim.x[0]
         self.gamma = self.optim.x[1:]
 
-    def predict(self, logits):
-
+    def predict_post(self, logits):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         tlogits = self.alpha*logits + self.gamma
@@ -227,13 +226,12 @@ class PAVCalibrator(Calibrator):
         self.fit(self.logits, self.target)
 
     def fit(self, logits, target):
-
         probs = softmax(logits, axis=1).astype(np.float)
         for cls, model in enumerate(self.models):
             x, y = probs[:, cls], target[:, cls]
             model.fit(x, y)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         probs = softmax(logits, axis=1).astype(np.float)
         cal_probs = np.zeros(logits.shape)
         for cls, model in enumerate(self.models):
@@ -277,7 +275,6 @@ class NiceCalibrator(Calibrator):
         return Model(inputs=self.flow.forward_model.input, outputs=y)
 
     def fit(self, logits, target, epochs=1000, batch_size=100):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
@@ -290,13 +287,12 @@ class NiceCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         return self.flow.forward_model.predict(logits, batch_size=100)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         logits = self.predict_logits(logits)
         probs = softmax(logits, axis=1)
         return probs
@@ -322,7 +318,6 @@ class PlanarFlowCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
@@ -335,13 +330,12 @@ class PlanarFlowCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         return self.flow.forward_model.predict(logits, batch_size=128)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         logits = self.predict_logits(logits)
         probs = softmax(logits, axis=1)
         return probs
@@ -367,7 +361,6 @@ class RadialFlowCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
@@ -380,13 +373,12 @@ class RadialFlowCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         return self.flow.forward_model.predict(logits, batch_size=128)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         logits = self.predict_logits(logits)
         probs = softmax(logits, axis=1)
         return probs
@@ -415,7 +407,6 @@ class RealNvpCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
@@ -428,13 +419,12 @@ class RealNvpCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-
         # Normalize input to net.
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         return self.flow.forward_model.predict(logits, batch_size=128)
 
-    def predict(self, logits):
+    def predict_post(self, logits):
         logits = self.predict_logits(logits)
         probs = softmax(logits, axis=1)
         return probs

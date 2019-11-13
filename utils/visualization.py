@@ -19,6 +19,41 @@ for i in range(3):
 REGS_CMAP = ListedColormap(new_colors)
 
 
+def plot_nll_curve(logits,
+                   target,
+                   calibrators,
+                   ax=None,
+                   labels=None,
+                   log=True,
+                   top=None,
+                   title='NLL Curve'):
+
+    if not isinstance(calibrators, list):
+        calibrators = [calibrators]
+
+    if labels is None:
+        labels = ['Cal_{}'.format(i+1) for i in range(len(calibrators))]
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    for cal, label in zip(calibrators, labels):
+        indv_nll = -np.sum(target*np.log(cal(logits)+1e-7), axis=1)
+        indv_nll = np.sort(indv_nll)[::-1]
+        if top is not None:
+            indv_nll = indv_nll[:top]
+        ax.plot(indv_nll, label=label)
+    ax.set_title(title)
+    ax.set_ylabel('NLL')
+    ax.set_xlabel('Sample')
+    if log:
+        ax.set_yscale('log')
+    if len(calibrators) > 1:
+        ax.legend()
+
+    return ax
+
+
 def plot_prob_simplex(probs,
                       target=None,
                       ax=None,
