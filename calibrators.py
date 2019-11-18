@@ -38,7 +38,7 @@ class Calibrator:
 
     def predict(self, logits):
         probs = self.predict_post(logits)
-        return softmax(np.log(probs) - self.log_priors, axis=1)
+        return softmax(np.log(probs + 1e-7) - self.log_priors, axis=1)
 
 
 class DummyCalibrator(Calibrator):
