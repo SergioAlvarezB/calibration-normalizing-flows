@@ -5,10 +5,15 @@ from sklearn.isotonic import IsotonicRegression
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Activation
 
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, TensorDataset
+
 from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow, NiceFlow_v2, NiceFlow_v3
 from flows.realNVP import RealNvpFlow
 from flows.normalizing_flows import PlanarFlow, RadialFlow
+from flows.normalizing_flows_torch import PlanarFlow as TorchPlanarFlow
 
 
 class Calibrator:
@@ -423,6 +428,78 @@ class RealNvpCalibrator(Calibrator):
         logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         return self.flow.forward_model.predict(logits, batch_size=128)
+
+    def predict_post(self, logits):
+        logits = self.predict_logits(logits)
+        probs = softmax(logits, axis=1)
+        return probs
+
+
+class TorchPlanarFlowCalibrator(Calibrator):
+
+    def __init__(self, logits, target, **kwargs):
+        super().__init__(logits, target)
+
+        self.flow = TorchPlanarFlow(self.n_classes, kwargs.get('layers', 5))
+
+        self.dev = (kwargs.get('dev',
+                               torch.device("cuda")
+                               if torch.cuda.is_available()
+                               else torch.device("cpu")))
+        self.flow.to(self.dev)
+
+        self.CE = nn.CrossEntropyLoss()
+
+        self.optimizer = torch.optim.Adam(self.flow.parameters())
+
+        self.history = self.fit(self.logits,
+                                self.target,
+                                epochs=kwargs.get('epochs', 1000),
+                                batch_size=kwargs.get('batch_size', 128))
+
+    def fit(self, logits, target, epochs, batch_size):
+        # Normalize input to net.
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
+
+        # Convert from onehot_encode.
+        target = np.argmax(target, axis=1)
+
+        # Data loader.
+        train_ds = TensorDataset(torch.as_tensor(logits, dtype=torch.float).to(self.dev),
+                                 torch.as_tensor(target, dtype=torch.long).to(self.dev))
+        train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+
+        history = {}
+        history['loss'] = []
+
+        for epoch in range(epochs):
+            self.flow.train()
+            for xb, yb in train_dl:
+                pred = self.flow(xb)
+                loss = self.CE(pred, yb)
+
+                loss.backward()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
+
+            self.flow.eval()
+            loss = 0
+            num = 0
+            with torch.no_grad():
+                for xb, yb in train_dl:
+                    pred = self.flow(xb)
+                    loss += self.CE(pred, yb) * len(xb)
+                    num += len(xb)
+                history['loss'].append(loss/num)
+
+        return history
+
+    def predict_logits(self, logits):
+        # Normalize input to net.
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
+        preds = self.flow(torch.as_tensor(logits, dtype=torch.float).to(self.dev))
+
+        return preds.cpu().detach().numpy()
 
     def predict_post(self, logits):
         logits = self.predict_logits(logits)
