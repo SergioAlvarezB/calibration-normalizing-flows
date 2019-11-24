@@ -13,12 +13,13 @@ from utils.ops import onehot_encode, optim_temperature
 from flows.nice import NiceFlow, NiceFlow_v2, NiceFlow_v3
 from flows.realNVP import RealNvpFlow
 from flows.normalizing_flows import PlanarFlow, RadialFlow
-from flows.normalizing_flows_torch import PlanarFlow as TorchPlanarFlow
 
 
 class Calibrator:
     def __init__(self, logits, target):
         """Implementes base abstract class for calibrators."""
+        # Normalize logits.
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
         self.logits = logits
 
         if target.shape != logits.shape:
@@ -42,6 +43,8 @@ class Calibrator:
         raise NotImplementedError
 
     def predict(self, logits):
+        # Normalize logits.
+        logits = logits - np.mean(logits, axis=1, keepdims=True)
         probs = self.predict_post(logits)
         return softmax(np.log(probs + 1e-7) - self.log_priors, axis=1)
 
@@ -67,9 +70,6 @@ class TempScalingCalibrator(Calibrator):
         self.T = optim_temperature(logits, target)
 
     def predict_post(self, logits):
-
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         return softmax(logits/self.T, axis=1)
 
 
@@ -86,8 +86,8 @@ class MatrixScalingCalibrator(Calibrator):
     def fit(self, logits, target):
 
         def target_func(x, logits, target):
-            tlogits = logits @ x[self.n:].reshape([self.n, self.n]) \
-                + x[:self.n]
+            tlogits = logits @ (x[self.n:].reshape([self.n, self.n])
+                                + x[:self.n])
             probs = softmax(tlogits, axis=1)
             return np.mean(-np.sum(target*np.log(probs+1e-7), axis=1))
 
@@ -116,8 +116,6 @@ class MatrixScalingCalibrator(Calibrator):
         self.W = self.optim.x[self.n:].reshape([self.n, self.n])
 
     def predict_post(self, logits):
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         tlogits = logits @ self.W + self.b
         probs = softmax(tlogits, axis=1)
         return probs
@@ -163,8 +161,6 @@ class VectorScalingCalibrator(Calibrator):
         self.W = self.optim.x[self.n:]
 
     def predict_post(self, logits):
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         tlogits = self.W * logits + self.b
         probs = softmax(tlogits, axis=1)
         return probs
@@ -209,8 +205,6 @@ class MLRCalibrator(Calibrator):
         self.gamma = self.optim.x[1:]
 
     def predict_post(self, logits):
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         tlogits = self.alpha*logits + self.gamma
         probs = softmax(tlogits, axis=1)
         return probs
@@ -280,8 +274,6 @@ class NiceCalibrator(Calibrator):
         return Model(inputs=self.flow.forward_model.input, outputs=y)
 
     def fit(self, logits, target, epochs=1000, batch_size=100):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         h = self.train_model.fit(
                 logits,
@@ -292,9 +284,6 @@ class NiceCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         return self.flow.forward_model.predict(logits, batch_size=100)
 
     def predict_post(self, logits):
@@ -323,8 +312,6 @@ class PlanarFlowCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         h = self.train_model.fit(
                 logits,
@@ -335,9 +322,6 @@ class PlanarFlowCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         return self.flow.forward_model.predict(logits, batch_size=128)
 
     def predict_post(self, logits):
@@ -366,8 +350,6 @@ class RadialFlowCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         h = self.train_model.fit(
                 logits,
@@ -378,9 +360,6 @@ class RadialFlowCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         return self.flow.forward_model.predict(logits, batch_size=128)
 
     def predict_post(self, logits):
@@ -412,8 +391,6 @@ class RealNvpCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
 
         h = self.train_model.fit(
                 logits,
@@ -424,9 +401,6 @@ class RealNvpCalibrator(Calibrator):
         return h
 
     def predict_logits(self, logits):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
         return self.flow.forward_model.predict(logits, batch_size=128)
 
     def predict_post(self, logits):
@@ -435,21 +409,26 @@ class RealNvpCalibrator(Calibrator):
         return probs
 
 
-class TorchPlanarFlowCalibrator(Calibrator):
+class TorchFlowCalibrator(Calibrator):
 
-    def __init__(self, logits, target, **kwargs):
+    def __init__(self, Flow, logits, target, **kwargs):
         super().__init__(logits, target)
 
-        self.flow = TorchPlanarFlow(self.n_classes, kwargs.get('layers', 5))
+        # Torch CE expects int labels.
+        self.target = np.argmax(self.target, axis=1)
+
+        # Convert data to torch tensors.
+        self.logits = torch.as_tensor(self.logits, dtype=torch.float)
+        self.target = torch.as_tensor(self.target, dtype=torch.long)
+
+        self.flow = Flow(self.n_classes, kwargs.get('layers', 5))
 
         self.dev = (kwargs.get('dev',
                                torch.device("cuda")
                                if torch.cuda.is_available()
                                else torch.device("cpu")))
-        self.flow.to(self.dev)
 
         self.CE = nn.CrossEntropyLoss()
-
         self.optimizer = torch.optim.Adam(self.flow.parameters())
 
         self.history = self.fit(self.logits,
@@ -458,15 +437,13 @@ class TorchPlanarFlowCalibrator(Calibrator):
                                 batch_size=kwargs.get('batch_size', 128))
 
     def fit(self, logits, target, epochs, batch_size):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-
-        # Convert from onehot_encode.
-        target = np.argmax(target, axis=1)
+        # Send data to device.
+        logits = logits.to(self.dev)
+        target = target.to(self.dev)
+        self.flow.to(self.dev)
 
         # Data loader.
-        train_ds = TensorDataset(torch.as_tensor(logits, dtype=torch.float).to(self.dev),
-                                 torch.as_tensor(target, dtype=torch.long).to(self.dev))
+        train_ds = TensorDataset(logits, target)
         train_dl = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
 
         history = {}
@@ -483,23 +460,45 @@ class TorchPlanarFlowCalibrator(Calibrator):
                 self.optimizer.zero_grad()
 
             self.flow.eval()
-            loss = 0
+            _loss = 0
             num = 0
             with torch.no_grad():
                 for xb, yb in train_dl:
                     pred = self.flow(xb)
-                    loss += self.CE(pred, yb) * len(xb)
+                    _loss += self.CE(pred, yb).item() * len(xb)
                     num += len(xb)
-                history['loss'].append(loss/num)
+                history['loss'].append(_loss/num)
+
+        # Return data to cpu
+        self.flow.cpu()
+
+        # Delete reference to unused variables.
+        del logits, target, train_ds, train_dl, pred, loss
+
+        # Clean GPU memory.
+        torch.cuda.empty_cache()
 
         return history
 
     def predict_logits(self, logits):
-        # Normalize input to net.
-        logits = logits - np.mean(logits, axis=1, keepdims=True)
-        preds = self.flow(torch.as_tensor(logits, dtype=torch.float).to(self.dev))
+        # Create logits tensor.
+        logits = torch.as_tensor(logits, dtype=torch.float)
 
-        return preds.cpu().detach().numpy()
+        # Send data to decive.
+        self.flow.to(self.dev)
+        logits = logits.to(self.dev)
+
+        # Predictions.
+        preds = self.flow(logits)
+
+        # Return data to cpu
+        self.flow.cpu()
+        preds = preds.cpu().detach().numpy()
+
+        # Clean GPU memory.
+        torch.cuda.empty_cache()
+
+        return preds
 
     def predict_post(self, logits):
         logits = self.predict_logits(logits)
