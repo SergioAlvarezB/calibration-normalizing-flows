@@ -87,7 +87,10 @@ def plot_prob_simplex(probs,
             if len(points) >= 1:
                 tax.scatter(
                         points,
+                        marker='.',
                         color=colors[i],
+                        alpha=0.5,
+                        edgecolors=colors[i],
                         label=label)
 
         tax.legend()
@@ -104,13 +107,13 @@ def plot_prob_simplex(probs,
 
 
 def plot_pdf_simplex(probs,
+                     target=None,
                      ax=None,
                      scale=50,
                      title='Estimated PDF',
                      temp=None,
                      fontsize=12,
-                     labels=[0, 1, 2],
-                     target=None):
+                     labels=[0, 1, 2]):
     """Makes heatmap ternary plot of the estimated probability density.
     Rows of `probs` are expected to sum up to 1."""
 
