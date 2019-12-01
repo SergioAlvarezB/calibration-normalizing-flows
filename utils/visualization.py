@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
-from scipy import stats
+from scipy.stats import gaussian_kde
 from scipy.special import softmax
 from ternary.helpers import normalize, simplex_iterator
 
@@ -109,6 +109,7 @@ def plot_prob_simplex(probs,
 def plot_pdf_simplex(probs,
                      target=None,
                      ax=None,
+                     bw=None,
                      scale=50,
                      title='Estimated PDF',
                      temp=None,
@@ -134,7 +135,7 @@ def plot_pdf_simplex(probs,
     if target is not None:
         if target.ndim == 2:
             target = np.argmax(target, axis=1)
-        kernels = [stats.gaussian_kde(cart_probs[target == i, :].T)
+        kernels = [gaussian_kde(cart_probs[target == i, :].T, bw_method=bw)
                    for i in range(3)]
 
         def estimated_pdf(p):
@@ -158,7 +159,7 @@ def plot_pdf_simplex(probs,
                 ])
 
     else:
-        kernel = stats.gaussian_kde(cart_probs.T)
+        kernel = gaussian_kde(cart_probs.T, bw_method=bw)
 
         def estimated_pdf(p):
             p = project_point(np.array(p))
