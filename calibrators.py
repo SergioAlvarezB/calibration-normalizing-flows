@@ -421,7 +421,7 @@ class TorchFlowCalibrator(Calibrator):
         self.logits = torch.as_tensor(self.logits, dtype=torch.float)
         self.target = torch.as_tensor(self.target, dtype=torch.long)
 
-        self.flow = Flow(self.n_classes, kwargs.get('layers', 5))
+        self.flow = Flow(self.n_classes, **kwargs)
 
         self.dev = (kwargs.get('dev',
                                torch.device("cuda")

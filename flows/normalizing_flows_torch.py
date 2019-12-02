@@ -47,9 +47,10 @@ class RadialLayer(nn.Module):
 
 
 class PlanarFlow(nn.Module):
-    def __init__(self, dim, layers=5):
+    def __init__(self, dim, **kwargs):
         super(PlanarFlow, self).__init__()
 
+        layers = kwargs.get('layers', 5)
         self.layers = nn.ModuleList([PlanarLayer(dim) for _ in range(layers)])
 
     def forward(self, x):
@@ -59,9 +60,10 @@ class PlanarFlow(nn.Module):
 
 
 class RadialFlow(nn.Module):
-    def __init__(self, dim, layers=5):
+    def __init__(self, dim, **kwargs):
         super(RadialFlow, self).__init__()
 
+        layers = kwargs.get('layers', 5)
         self.layers = nn.ModuleList([RadialLayer(dim) for _ in range(layers)])
 
     def forward(self, x):
