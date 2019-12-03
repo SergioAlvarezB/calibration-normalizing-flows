@@ -42,12 +42,13 @@ def plot_nll_curve(logits,
         indv_nll = np.sort(indv_nll)[::-1]
         if top is not None:
             indv_nll = indv_nll[:top]
-        ax.plot(indv_nll, label=label)
+        if log:
+            ax.semilogy(indv_nll, label=label)
+        else:
+            ax.plot(indv_nll, label=label)
     ax.set_title(title)
     ax.set_ylabel('NLL')
     ax.set_xlabel('Sample')
-    if log:
-        ax.set_yscale('log')
     if len(calibrators) > 1:
         ax.legend()
 
