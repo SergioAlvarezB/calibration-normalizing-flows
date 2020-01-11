@@ -22,7 +22,13 @@ class PlanarLayer(nn.Module):
         h = torch.tanh(torch.matmul(x, self.w) + self.b)
         y = x + torch.matmul(h.view(-1, 1), u_hat.view(1, -1))
 
-        return y
+        # Log-determinant
+        hp = 1 - h**2
+        phi = torch.matmul(hp.view(-1, 1), self.w.view(1, -1))
+        det = torch.abs(1 + torch.matmul(phi, u_hat.view(-1, 1)))
+        log_det = torch.log(det.squeeze())
+
+        return y, log_det
 
 
 class RadialLayer(nn.Module):
@@ -43,7 +49,11 @@ class RadialLayer(nn.Module):
 
         y = x + b_hat*h.expand_as(x_z0)*x_z0
 
-        return y
+        # Log-determinant
+        det = log_det = torch.tensor(1.0)
+        log_det = torch.log(det)
+
+        return y, log_det
 
 
 class PlanarFlow(nn.Module):
@@ -54,9 +64,12 @@ class PlanarFlow(nn.Module):
         self.layers = nn.ModuleList([PlanarLayer(dim) for _ in range(layers)])
 
     def forward(self, x):
+        cum_log_det = 0
         for layer in self.layers:
-            x = layer(x)
-        return x
+            x, log_det = layer(x)
+            cum_log_det += log_det
+
+        return x, cum_log_det
 
 
 class RadialFlow(nn.Module):
@@ -67,6 +80,9 @@ class RadialFlow(nn.Module):
         self.layers = nn.ModuleList([RadialLayer(dim) for _ in range(layers)])
 
     def forward(self, x):
+        cum_log_det = 0
         for layer in self.layers:
-            x = layer(x)
-        return x
+            x, log_det = layer(x)
+            cum_log_det += log_det
+
+        return x, cum_log_det

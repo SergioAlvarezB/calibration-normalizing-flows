@@ -276,23 +276,32 @@ class TorchFlowCalibrator(Calibrator):
         history = {}
         history['loss'] = []
 
+        softmx = nn.Softmax(dim=1)
+
         for epoch in range(epochs):
             self.flow.train()
             for xb, yb in train_dl:
-                pred = self.flow(xb)
-                loss = self.CE(pred, yb)
+                pred, log_det = self.flow(xb)
+                probs = softmx(pred)
+                ce = torch.log(probs.gather(1, yb.view(-1, 1)) + 1e-7)
+                log_prob = ce.squeeze() + log_det
+                loss = -torch.mean(log_prob)
 
+                self.flow.zero_grad()
                 loss.backward()
                 self.optimizer.step()
-                self.optimizer.zero_grad()
 
             self.flow.eval()
             _loss = 0
             num = 0
             with torch.no_grad():
                 for xb, yb in train_dl:
-                    pred = self.flow(xb)
-                    _loss += self.CE(pred, yb).item() * len(xb)
+                    pred, log_det = self.flow(xb)
+                    probs = softmx(pred)
+                    ce = torch.log(probs.gather(1, yb.view(-1, 1)) + 1e-7)
+                    log_prob = ce.squeeze() + log_det
+                    _loss = -torch.mean(log_prob)
+                    _loss *= len(xb)
                     num += len(xb)
                 history['loss'].append(_loss/num)
 
@@ -316,7 +325,7 @@ class TorchFlowCalibrator(Calibrator):
         logits = logits.to(self.dev)
 
         # Predictions.
-        preds = self.flow(logits)
+        preds, _ = self.flow(logits)
 
         # Return data to cpu
         self.flow.cpu()

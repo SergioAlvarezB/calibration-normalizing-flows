@@ -31,11 +31,15 @@ class AdditiveCouplingLayer(nn.Module):
 
     def forward(self, x):
         y = self.mask*x + (1-self.mask)*(x + self.coupling_func(x))
-        return y
+        log_det = torch.tensor(0.0)
+
+        return y, log_det
 
     def backward(self, x):
         y = self.mask*x + (1-self.mask)*(x - self.coupling_func(x))
-        return y
+        log_det = torch.tensor(0.0)
+
+        return y, log_det
 
 
 class NiceFlow(nn.Module):
@@ -58,12 +62,17 @@ class NiceFlow(nn.Module):
         self.layers = nn.ModuleList(layers)
 
     def forward(self, x):
+        cum_log_det = 0
         for layer in self.layers:
-            x = layer(x)
-        return x
+            x, log_det = layer(x)
+            cum_log_det += log_det
+
+        return x, cum_log_det
 
     def backward(self, x):
+        cum_log_det = 0
         for l in self.layers[::-1]:
-            x = l.backward(x)
+            x, log_det = l.backward(x)
+            cum_log_det += log_det
 
-        return x
+        return x, cum_log_det

@@ -19,66 +19,7 @@ for i in range(3):
 REGS_CMAP = ListedColormap(new_colors)
 
 
-def plot_nll_curve(logits,
-                   target,
-                   calibrators,
-                   ax=None,
-                   labels=None,
-                   log=True,
-                   norm=False,
-                   top=None,
-                   test_logits=None,
-                   test_target=None,
-                   title='NLL Curve'):
-
-    test = (test_logits is not None)
-
-    if not isinstance(calibrators, list):
-        calibrators = [calibrators]
-
-    if labels is None:
-        labels = ['Cal_{}'.format(i+1) for i in range(len(calibrators))]
-
-    if ax is None:
-        fig, ax = plt.subplots()
-
-    for cal, label in zip(calibrators, labels):
-        indv_nll = -np.sum(target*np.log(cal(logits)+1e-7), axis=1)
-        tot_nll = np.sum(indv_nll)
-        indv_nll = np.sort(indv_nll)[::-1]
-        if top is not None:
-            indv_nll = indv_nll[:top]
-
-        if norm:
-            indv_nll /= tot_nll
-
-        ax.plot(indv_nll, label=label)
-
-        if test:
-            indv_nll = -np.sum(test_target*np.log(cal(test_logits)+1e-7),
-                               axis=1)
-            tot_nll = np.sum(indv_nll)
-            indv_nll = np.sort(indv_nll)[::-1]
-            if top is not None:
-                indv_nll = indv_nll[:top]
-
-            if norm:
-                indv_nll /= tot_nll
-
-            ax.plot(indv_nll, label=label+'_test')
-
-    if log:
-        ax.set_yscale('log')
-    ax.set_title(title)
-    if norm:
-        ax.set_ylabel('Normalized NLL')
-    else:
-        ax.set_ylabel('NLL')
-    ax.set_xlabel('Sample')
-    if len(calibrators) > 1 or test:
-        ax.legend()
-
-    return ax
+# ########## Simplex plots ##########
 
 
 def plot_prob_simplex(probs,
@@ -271,11 +212,75 @@ def plot_cal_regions_ternary(calibrator,
 
     return tax
 
+# ########## Other plots ##########
+
+
+def plot_nll_curve(logits,
+                   target,
+                   calibrators,
+                   ax=None,
+                   labels=None,
+                   log=True,
+                   norm=False,
+                   top=None,
+                   test_logits=None,
+                   test_target=None,
+                   title='NLL Curve'):
+
+    test = (test_logits is not None)
+
+    if not isinstance(calibrators, list):
+        calibrators = [calibrators]
+
+    if labels is None:
+        labels = ['Cal_{}'.format(i+1) for i in range(len(calibrators))]
+
+    if ax is None:
+        fig, ax = plt.subplots()
+
+    for cal, label in zip(calibrators, labels):
+        indv_nll = -np.sum(target*np.log(cal(logits)+1e-7), axis=1)
+        tot_nll = np.sum(indv_nll)
+        indv_nll = np.sort(indv_nll)[::-1]
+        if top is not None:
+            indv_nll = indv_nll[:top]
+
+        if norm:
+            indv_nll /= tot_nll
+
+        ax.plot(indv_nll, label=label)
+
+        if test:
+            indv_nll = -np.sum(test_target*np.log(cal(test_logits)+1e-7),
+                               axis=1)
+            tot_nll = np.sum(indv_nll)
+            indv_nll = np.sort(indv_nll)[::-1]
+            if top is not None:
+                indv_nll = indv_nll[:top]
+
+            if norm:
+                indv_nll /= tot_nll
+
+            ax.plot(indv_nll, label=label+'_test')
+
+    if log:
+        ax.set_yscale('log')
+    ax.set_title(title)
+    if norm:
+        ax.set_ylabel('Normalized NLL')
+    else:
+        ax.set_ylabel('NLL')
+    ax.set_xlabel('Sample')
+    if len(calibrators) > 1 or test:
+        ax.legend()
+
+    return ax
+
 
 def reliability_diagram(probs,
                         target,
                         ax=None,
-                        bins=20,
+                        bins=15,
                         fontsize=12,
                         label='Output',
                         optimum=True,
