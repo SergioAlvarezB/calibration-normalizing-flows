@@ -261,7 +261,8 @@ class TorchFlowCalibrator(Calibrator):
         self.history = self.fit(self.logits,
                                 self.target,
                                 epochs=kwargs.get('epochs', 1000),
-                                batch_size=kwargs.get('batch_size', 128))
+                                batch_size=kwargs.get('batch_size',
+                                                      logits.shape[0]))
 
     def fit(self, logits, target, epochs, batch_size):
         # Send data to device.
@@ -275,6 +276,8 @@ class TorchFlowCalibrator(Calibrator):
 
         history = {}
         history['loss'] = []
+        history['ce'] = []
+        history['log_det'] = []
 
         softmx = nn.Softmax(dim=1)
 
@@ -293,6 +296,8 @@ class TorchFlowCalibrator(Calibrator):
 
             self.flow.eval()
             _loss = 0
+            _ce = 0
+            _log_det = 0
             num = 0
             with torch.no_grad():
                 for xb, yb in train_dl:
@@ -302,8 +307,14 @@ class TorchFlowCalibrator(Calibrator):
                     log_prob = ce.squeeze() + log_det
                     _loss = -torch.mean(log_prob)
                     _loss *= len(xb)
+                    _ce = -torch.mean(ce.squeeze())
+                    _ce *= len(xb)
+                    _log_det = torch.mean(log_det)
+                    _log_det *= len(xb)
                     num += len(xb)
                 history['loss'].append(_loss/num)
+                history['ce'].append(_ce/num)
+                history['log_det'].append(_log_det/num)
 
         # Return data to cpu
         self.flow.cpu()

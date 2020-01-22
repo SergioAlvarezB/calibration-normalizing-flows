@@ -37,7 +37,7 @@ class NvpCouplingLayer(nn.Module):
         s, t = self.s(x_b), self.t(x_b)
         y = x_b + b_1 * (x * torch.exp(s) + t)
 
-        log_det = torch.sum(s*b_1, dim=1)
+        log_det = torch.sum(b_1*s, dim=1)
 
         return y, log_det.squeeze()
 
@@ -48,7 +48,7 @@ class NvpCouplingLayer(nn.Module):
         s, t = self.s(x_b), self.t(x_b)
         y = x_b + b_1*((x - t) * torch.exp(-s))
 
-        log_det = torch.sum(-s*b_1, dim=1)
+        log_det = torch.sum(b_1*(-s), dim=1)
 
         return y, log_det.squeeze()
 
@@ -76,7 +76,7 @@ class RealNvpFlow(nn.Module):
         self.layers = nn.ModuleList(flow_layers)
 
     def forward(self, x):
-        cum_log_det = 0
+        cum_log_det = torch.zeros(x.shape[0])
         for layer in self.layers:
             x, log_det = layer(x)
             cum_log_det += log_det
@@ -84,7 +84,7 @@ class RealNvpFlow(nn.Module):
         return x, cum_log_det
 
     def backward(self, x):
-        cum_log_det = 0
+        cum_log_det = torch.zeros(x.shape[0])
         for l in self.layers[::-1]:
             x, log_det = l.backward(x)
             cum_log_det += log_det
