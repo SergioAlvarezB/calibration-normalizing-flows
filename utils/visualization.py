@@ -179,7 +179,7 @@ def plot_cal_regions_ternary(calibrator,
     pred = calibrator(logits)
     t = np.argmax(pred, axis=1)
 
-    colors = (np.max(pred, axis=1)-0.1 + t)/3.
+    colors = (np.max(pred, axis=1)-0.01 + t)/3.
 
     data = {}
     for i, j, k in simplex_iterator(scale=scale):
