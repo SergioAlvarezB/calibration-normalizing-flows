@@ -11,10 +11,10 @@ from .ops import project_sequence, project_point, onehot_encode
 from .metrics import empirical_cross_entropy
 
 # Regions ListedColormap
-sequ = np.linspace(0.33, 1, 256)
-new_colors = np.zeros((256*3, 3))
+sequ = np.linspace(0.33, 1, 1024)
+new_colors = np.zeros(((1024)*3, 3))
 for i in range(3):
-    new_colors[256*i:256*(i+1), i] = sequ
+    new_colors[(1024)*i:(1024)*(i+1), i] = sequ
 
 REGS_CMAP = ListedColormap(new_colors)
 
@@ -175,11 +175,14 @@ def plot_cal_regions_ternary(calibrator,
 
     probs = np.array(probs)
     logits = np.log(probs + 1e-7)
-    logits -= np.mean(logits, axis=1, keepdims=True)
+
+    # Equivalent to log(softmax())
+    logits -= np.log(np.sum(np.exp(logits), axis=1, keepdims=True))
+
     pred = calibrator(logits)
     t = np.argmax(pred, axis=1)
 
-    colors = (np.max(pred, axis=1)-0.01 + t)/3.
+    colors = (np.max(pred, axis=1)-0.0001 + t)/3.
 
     data = {}
     for i, j, k in simplex_iterator(scale=scale):
