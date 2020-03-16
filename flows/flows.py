@@ -10,13 +10,12 @@ class Flow(nn.Module):
         super(Flow, self).__init__()
 
         self.layers = nn.ModuleList(layers)
-        self.log_det = nn.Parameter(torch.zeros(1), requires_grad=False)
 
         # A flow is (computationally) invertible if all its layers are.
         self.invertible = all([layer.invertible for layer in self.layers])
 
     def forward(self, x):
-        cum_log_det = self.log_det.new_full((x.shape[0],), fill_value=0)
+        cum_log_det = 0.0
         zs = []
         for layer in self.layers:
             x, log_det = layer(x)
@@ -28,7 +27,7 @@ class Flow(nn.Module):
     def backward(self, z):
         if not self.invertible:
             raise ValueError('Flow inverse not tractable!')
-        cum_log_det = self.log_det.new_full((z.shape[0],), fill_value=0)
+        cum_log_det = 0.0
         xs = []
         for layer in self.layers[::-1]:
             z, log_det = layer.backward(z)
@@ -99,6 +98,7 @@ class NvpCouplingLayer(nn.Module):
         return z.flip((1,)), log_det
 
     def backward(self, z):
+        z = z.flip((1,))
         x_b = self.mask*z
         b_1 = 1 - self.mask
 
@@ -106,17 +106,24 @@ class NvpCouplingLayer(nn.Module):
         x = x_b + b_1*((z - t) * torch.exp(-s))
 
         log_det = torch.sum(b_1*(-s), dim=1).squeeze()
-        return x.flip((1,)), log_det
+        return x, log_det
 
 
 class PlanarLayer(nn.Module):
-    def __init__(self, dim):
+    def __init__(self, dim=0, params=None):
         super(PlanarLayer, self).__init__()
 
         # Initialize parameters.
-        self.w = nn.Parameter(torch.rand(dim))
-        self.u = nn.Parameter(torch.rand(dim))
-        self.b = nn.Parameter(torch.rand(1))
+        if params is not None:
+            self.w = params['w'].squeeze()
+            self.u = params['u'].squeeze()
+            self.b = params['b'].squeeze()
+        else:
+            if dim < 1:
+                raise ValueError('Either dim of params must be provided!')
+            self.w = nn.Parameter(torch.rand(dim))
+            self.u = nn.Parameter(torch.rand(dim))
+            self.b = nn.Parameter(torch.rand(1))
 
         # Indicate wether flow is computationally invertible.
         self.invertible = False
