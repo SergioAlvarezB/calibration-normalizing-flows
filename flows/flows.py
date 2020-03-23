@@ -84,6 +84,8 @@ class NvpCouplingLayer(nn.Module):
                 torch.as_tensor(mask.copy(), dtype=torch.float),
                 requires_grad=False)
 
+        self.softplus = nn.Softplus()
+
         # Indicate wether flow is computationally invertible.
         self.invertible = True
 
@@ -92,9 +94,11 @@ class NvpCouplingLayer(nn.Module):
         b_1 = 1 - self.mask
 
         s, t = self.s(x_b), self.t(x_b)
-        z = x_b + b_1 * (x * torch.exp(s) + t)
+        s_soft = self.softplus(s)
 
-        log_det = torch.sum(b_1*s, dim=1).squeeze()
+        z = x_b + b_1 * (x * s_soft + t)
+
+        log_det = torch.sum(b_1*torch.log(s_soft), dim=1).squeeze()
         return z.flip((1,)), log_det
 
     def backward(self, z):
@@ -103,9 +107,11 @@ class NvpCouplingLayer(nn.Module):
         b_1 = 1 - self.mask
 
         s, t = self.s(x_b), self.t(x_b)
-        x = x_b + b_1*((z - t) * torch.exp(-s))
+        s_soft = self.softplus(s)
 
-        log_det = torch.sum(b_1*(-s), dim=1).squeeze()
+        x = x_b + b_1*((z - t) / s_soft)
+
+        log_det = torch.sum(b_1*(-torch.log(s_soft)), dim=1).squeeze()
         return x, log_det
 
 
