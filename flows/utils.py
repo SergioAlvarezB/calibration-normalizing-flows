@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 import torch.nn.functional as F
 
@@ -16,3 +17,20 @@ class MLP(nn.Module):
         y = self.layers[-1](x)
 
         return y
+
+
+class TempScaler(nn.Module):
+    def __init__(self):
+        super(TempScaler, self).__init__()
+
+        self.T = nn.Parameter(torch.ones(1))
+
+    def forward(self, x):
+        z = x/self.T
+
+        return z
+
+    def backward(self, z):
+        x = z*self.T
+
+        return x

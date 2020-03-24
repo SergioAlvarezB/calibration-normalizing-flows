@@ -21,6 +21,15 @@ ix2label = {
 label2ix = {v: k for k, v in ix2label.items()}
 
 
+def load_toy_dataset(data_path, dataset):
+    dataset = dataset + '_separable'
+
+    logits = np.load(os.path.join(data_path, dataset + '_logits.npy'))
+    target = np.load(os.path.join(data_path, dataset + '_target.npy'))
+
+    return logits, target
+
+
 def load_logits(model_dir):
     with open(os.path.join(model_dir, 'train_logits.pkl'), 'rb') as f:
         train_logits = pickle.load(f)
