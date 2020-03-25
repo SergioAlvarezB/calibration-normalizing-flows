@@ -1,6 +1,8 @@
 import os
+import sys
 import time
 import argparse
+from datetime import datetime
 
 import numpy as np
 import torch
@@ -8,7 +10,7 @@ from torch import nn
 
 from flows.flows import Flow, NvpCouplingLayer
 from flows.utils import MLP, TempScaler
-from utils.data import load_toy_dataset
+from utils.data import load_toy_dataset, str2bool
 
 
 MODELS = [
@@ -24,17 +26,6 @@ DATASETS = [
 ]
 
 SAVE_PATH = r'C:\Users\sergi\Google Drive\calibration-ml\experiments'
-
-
-def str2bool(v):
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 parser = argparse.ArgumentParser()
@@ -69,11 +60,32 @@ parser.add_argument("-t", "--shift", help="Whether to use translation in flow",
                     type=str2bool, nargs='?', const=True, default=True)
 parser.add_argument("-s", "--scale", help="Whether to use scaling in flow",
                     type=str2bool, nargs='?', const=True, default=True)
+parser.add_argument("-d", "--det", help="Whether to use det in cost function",
+                    type=str2bool, nargs='?', const=True, default=True)
 parser.add_argument("--hidden_size", help='hidden layers size',
                     default=[5, 5], nargs='+', type=int)
 
 conf = parser.parse_args()
 dev = torch.device('cuda:0') if conf.cuda else torch.device('cpu')
+
+if conf.name == 'experiment':
+    now = datetime.now()
+    conf.name += now.strftime("%Y%m%d_")
+    conf.name += conf.model + '_'
+    if not conf.det:
+        conf.name += 'nodet_'
+    conf.name += conf.dataset
+
+
+save_dir = os.path.join(SAVE_PATH, conf.name)
+if not os.path.exists(save_dir):
+    os.makedirs(save_dir)
+else:
+    answer = str2bool(input("name already exists, overwrite? [y/N]? ").lower())
+    if not answer:
+        print('Aborting experiment')
+        sys.exit()
+
 
 # Load data
 logits, target = load_toy_dataset('data/toys/', conf.dataset)
@@ -105,25 +117,28 @@ CE = nn.CrossEntropyLoss()
 
 
 # Initialize training history
-if conf.model != 'flow':
-    model_dict = conf.model
-else:
-    model_dict = {
-        'steps': conf.steps,
-        'scale': conf.scale,
-        'shift': conf.shift,
-        'hidden_size': conf.hidden_size
-    }
+
 h = {
-    'model': model_dict,
+    'dataset': conf.dataset,
+    'model': conf.model,
     'lr': conf.lr,
     'weight_decay': conf.weight_decay,
     'loss': [],
     'intermediate_results': [],
 }
 
-if conf.model == model:
+if conf.model == 'flow':
     h['log_det'] = []
+    h['model_dict'] = {
+        'steps': conf.steps,
+        'scale': conf.scale,
+        'shift': conf.shift,
+        'hidden_size': conf.hidden_size
+    }
+if conf.model == 'dnn':
+    h['model_dict'] = {
+        'hidden_size': conf.hidden_size
+    }
 
 t0 = time.time()
 for e in range(conf.epochs):
@@ -133,13 +148,14 @@ for e in range(conf.epochs):
         zs, _logdet = model(torch_logits)
         _logdet = torch.mean(_logdet)
         preds = zs[-1]
-        _loss = CE(preds, torch_target) - _logdet
+        _loss = CE(preds, torch_target) - (conf.det)*_logdet
         h['log_det'].append(_logdet.item())
 
     else:
         preds = model(torch_logits)
         _loss = CE(preds, torch_target)
 
+    h['loss'].append(_loss.item())
     if (preds != preds).any():
         print('Aborting training due to nan values')
         break
@@ -148,17 +164,11 @@ for e in range(conf.epochs):
     _loss.backward()
     opt.step()
 
-    h['loss'].append(_loss.item())
-
     if e % conf.step == (conf.step-1):
         h['intermediate_results'].append(preds.detach().cpu().numpy())
         if conf.verbose:
             print("Finished epoch: {:d} at time {:.2f}, loss: {:.3e}".format(
                   e, time.time()-t0, h['loss'][-1]))
-
-save_dir = os.path.join(SAVE_PATH, conf.name)
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
 
 if conf.hist:
     np.save(os.path.join(save_dir, 'history'), h)
