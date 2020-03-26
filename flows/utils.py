@@ -26,11 +26,11 @@ class TempScaler(nn.Module):
         self.T = nn.Parameter(torch.ones(1))
 
     def forward(self, x):
-        z = x/self.T
+        z = x/torch.abs(self.T)
 
         return z
 
     def backward(self, z):
-        x = z*self.T
+        x = z*torch.abs(self.T)
 
         return x

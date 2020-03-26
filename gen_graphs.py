@@ -10,7 +10,7 @@ from ternary.helpers import project_sequence
 
 from utils.data import str2bool, load_toy_dataset
 from utils.visualization import plot_prob_simplex
-from utils.metrics import neg_log_likelihood as nll
+from utils.metrics import neg_log_likelihood
 
 plt.ioff()
 
@@ -77,48 +77,54 @@ def create_animation_simplex(intermediate_results, target):
     return ani
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("path", help='path to the experiment to visualize')
-parser.add_argument('-s', '--save', help='wether to save plots',
-                    type=str2bool, default=True)
-parser.add_argument('-v', '--show', help='wether to display results',
-                    type=str2bool, default=True)
-conf = parser.parse_args()
+def main(path, save, show):
+    # Load data
+    h = np.load(os.path.join(path, 'history.npy'), allow_pickle=True)[()]
 
-# Load data
-h = np.load(os.path.join(conf.path, 'history.npy'), allow_pickle=True)[()]
+    logits, target = load_toy_dataset('data/toys/', h['dataset'])
+    uncal_nll = neg_log_likelihood(softmax(logits, axis=1), target)
 
-logits, target = load_toy_dataset('data/toys/', h['dataset'])
-uncal_nll = nll(softmax(logits, axis=1), target)
+    nll = (np.array(h['loss']) + np.array(h['log_det'])) \
+        if h['model'] == 'flow' else h['loss']
 
-nll = (np.array(h['loss']) + np.array(h['log_det'])) \
-    if h['model'] == 'flow' else h['loss']
-
-fig1, ax = plt.subplots(figsize=(12, 8))
-ax.plot(nll)
-ax.set_title('NNL')
-ax.set_ylim(0, min(2*uncal_nll, max(nll)))
-ax.axhline(uncal_nll, c='r', label='Uncalibrated ' + h['dataset'])
-ax.set_ylabel(r'$-log(P(z))$')
-ax.set_xlabel('Epoch')
-ax.legend()
-
-if h['model'] == 'flow':
-    fig2, ax = plt.subplots(figsize=(12, 8))
-    ax.plot(h['log_det'])
-    ax.set_title('Determinant')
-    ax.set_ylabel(r'$log(|J|)$')
+    fig1, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(nll)
+    ax.set_title('NNL')
+    ax.set_ylim(min(1e-2, max(min(nll), 1e-10)),
+                max(1.3*uncal_nll, min(1e10, max(nll))))
+    ax.axhline(uncal_nll, c='r', label='Uncalibrated ' + h['dataset'])
+    ax.set_yscale('log')
+    ax.set_ylabel(r'$-log(P(z))$')
     ax.set_xlabel('Epoch')
+    ax.legend()
 
-ani_simplex = create_animation_simplex(h['intermediate_results'], target)
-ani_logits = create_animation_logits(h['intermediate_results'], target)
-
-if conf.save:
-    ani_simplex.save(os.path.join(conf.path, 'ani-simplex.mp4'), codec='h264')
-    ani_logits.save(os.path.join(conf.path, 'ani-logits.mp4'), codec='h264')
-    fig1.savefig(os.path.join(conf.path, 'nll.png'), dpi=300)
     if h['model'] == 'flow':
-        fig2.savefig(os.path.join(conf.path, 'log_det.png'), dpi=300)
+        fig2, ax = plt.subplots(figsize=(12, 8))
+        ax.plot(h['log_det'])
+        ax.set_title('Determinant')
+        ax.set_ylabel(r'$log(|J|)$')
+        ax.set_xlabel('Epoch')
 
-if conf.show:
-    plt.show()
+    ani_simplex = create_animation_simplex(h['intermediate_results'], target)
+    ani_logits = create_animation_logits(h['intermediate_results'], target)
+
+    if save:
+        ani_simplex.save(os.path.join(path, 'simplex.mp4'), codec='h264')
+        ani_logits.save(os.path.join(path, 'logits.mp4'), codec='h264')
+        fig1.savefig(os.path.join(path, 'nll.png'), dpi=300)
+        if h['model'] == 'flow':
+            fig2.savefig(os.path.join(path, 'log_det.png'), dpi=300)
+
+    if show:
+        plt.show()
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", help='path to the experiment to visualize')
+    parser.add_argument('-s', '--save', help='wether to save plots',
+                        type=str2bool, default=True)
+    parser.add_argument('-v', '--show', help='wether to display results',
+                        type=str2bool, default=True)
+    conf = parser.parse_args()
+    main(conf.path, conf.save, conf.show)

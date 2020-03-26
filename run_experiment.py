@@ -2,7 +2,6 @@ import os
 import sys
 import time
 import argparse
-from datetime import datetime
 
 import numpy as np
 import torch
@@ -11,6 +10,7 @@ from torch import nn
 from flows.flows import Flow, NvpCouplingLayer
 from flows.utils import MLP, TempScaler
 from utils.data import load_toy_dataset, str2bool
+from gen_graphs import main as plots
 
 
 MODELS = [
@@ -21,7 +21,7 @@ MODELS = [
 
 DATASETS = [
     'bayes',
-    'twistted',
+    'twisted',
     'non',
 ]
 
@@ -29,6 +29,7 @@ SAVE_PATH = r'C:\Users\sergi\Google Drive\calibration-ml\experiments'
 
 
 parser = argparse.ArgumentParser()
+# Experiment meta-conf
 parser.add_argument('--model', help='model used to calibrate',
                     choices=MODELS, type=str.lower)
 parser.add_argument('--dataset', help='dataset to calibrate',
@@ -41,6 +42,8 @@ parser.add_argument("-v", "--verbose", help="increase output verbosity",
                     action="store_true")
 parser.add_argument('-n', '--name', type=str.lower, default='experiment',
                     help='name to save the model')
+parser.add_argument('-p', '--plots', help='wether to genertate plots',
+                    type=str2bool, default=True)
 
 # General training hyperparameters
 parser.add_argument("--lr", help='learning rate', type=float, default=1e-4)
@@ -68,13 +71,24 @@ parser.add_argument("--hidden_size", help='hidden layers size',
 conf = parser.parse_args()
 dev = torch.device('cuda:0') if conf.cuda else torch.device('cpu')
 
+# Build exp name
 if conf.name == 'experiment':
-    now = datetime.now()
-    conf.name += now.strftime("%Y%m%d_")
-    conf.name += conf.model + '_'
-    if not conf.det:
-        conf.name += 'nodet_'
-    conf.name += conf.dataset
+    conf.name += '_' + conf.model + '_'
+    conf.name += conf.dataset + '_'
+    conf.name += 'lr{:.0e}_'.format(conf.lr)
+    conf.name += 'e{:d}_'.format(conf.epochs)
+    conf.name += 'wd{:.0e}_'.format(conf.weight_decay)
+    if conf.model == 'flow':
+        conf.name += 'k{:d}_'.format(conf.steps)
+        if not conf.det:
+            conf.name += 'nodet_'
+        if not conf.shift:
+            conf.name += 'noshift_'
+        if not conf.scale:
+            conf.name += 'noscale_'
+    if conf.model in ['flow', 'dnn']:
+        conf.name += \
+            '[' + '-'.join(['{:d}'.format(h) for h in conf.hidden_size]) + ']'
 
 
 save_dir = os.path.join(SAVE_PATH, conf.name)
@@ -172,3 +186,8 @@ for e in range(conf.epochs):
 
 if conf.hist:
     np.save(os.path.join(save_dir, 'history'), h)
+
+    if conf.plots:
+        plots(save_dir, conf.hist, False)
+
+print("Experiment succesful!, results saved at: '{}'".format(save_dir))
