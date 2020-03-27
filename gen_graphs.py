@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 from scipy.special import softmax
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, to_rgb
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 from ternary.helpers import project_sequence
@@ -15,6 +16,13 @@ from utils.metrics import neg_log_likelihood
 plt.ioff()
 
 
+RGB_CMAP = ListedColormap(np.array(
+         [to_rgb('red'),
+          to_rgb('green'),
+          to_rgb('blue')]
+))
+
+
 def create_animation_logits(intermediate_results, target):
 
     preds = intermediate_results[0]
@@ -23,7 +31,11 @@ def create_animation_logits(intermediate_results, target):
     ax = fig.add_subplot(111, projection='3d')
     ax.view_init(20, 45)
 
-    sc = ax.scatter(preds[:, 0], preds[:, 1], preds[:, 2], c=target)
+    sc = ax.scatter(preds[:, 0],
+                    preds[:, 1],
+                    preds[:, 2],
+                    c=target,
+                    cmap=RGB_CMAP)
 
     # manually relim:
     xmin, xmax = 1e7, 1e-7
@@ -41,6 +53,8 @@ def create_animation_logits(intermediate_results, target):
     ax.set_xlim(xmin-0.1*(xmax-xmin), xmax+0.1*(xmax-xmin))
     ax.set_ylim(ymin-0.1*(ymax-ymin), ymax+0.1*(ymax-ymin))
     ax.set_zlim(zmin-0.1*(zmax-zmin), zmax+0.1*(zmax-zmin))
+
+    ax.legend(*sc.legend_elements(), title="Classes")
 
     def update_scat(i):
         preds = intermediate_results[i]
