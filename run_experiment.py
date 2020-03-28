@@ -1,7 +1,5 @@
 import os
-import sys
 import time
-import argparse
 
 import numpy as np
 import torch
@@ -9,97 +7,13 @@ from torch import nn
 
 from flows.flows import Flow, NvpCouplingLayer
 from flows.utils import MLP, TempScaler
-from utils.data import load_toy_dataset, str2bool
+from utils.data import load_toy_dataset, parse_conf
 from gen_graphs import main as plots
 
 
-MODELS = [
-    'flow',
-    'dnn',
-    'tscal',
-]
-
-DATASETS = [
-    'bayes',
-    'twisted',
-    'non',
-]
-
-SAVE_PATH = r'C:\Users\sergi\Google Drive\calibration-ml\experiments'
-
-
-parser = argparse.ArgumentParser()
-# Experiment meta-conf
-parser.add_argument('--model', help='model used to calibrate',
-                    choices=MODELS, type=str.lower)
-parser.add_argument('--dataset', help='dataset to calibrate',
-                    choices=DATASETS, type=str.lower)
-parser.add_argument('--save', help='wether to save final model',
-                    type=str2bool, default=True)
-parser.add_argument('--hist', help='wether to save training_history',
-                    type=str2bool, default=True)
-parser.add_argument("-v", "--verbose", help="increase output verbosity",
-                    action="store_true")
-parser.add_argument('-n', '--name', type=str.lower, default='experiment',
-                    help='name to save the model')
-parser.add_argument('-p', '--plots', help='wether to genertate plots',
-                    type=str2bool, default=True)
-
-# General training hyperparameters
-parser.add_argument("--lr", help='learning rate', type=float, default=1e-4)
-parser.add_argument("-e", "--epochs", help='epochs to train',
-                    type=int, default=30000)
-parser.add_argument('--weight_decay', help='L2 regularization factor',
-                    type=float, default=0)
-parser.add_argument("--cuda", help="Whether to use gpu", type=str2bool,
-                    nargs='?', const=True, default=True)
-parser.add_argument('--step', help='step frequency with which to print info',
-                    type=int, default=10)
-
-# Model-specific
-parser.add_argument("-k", "--steps", help='Number of flow steps',
-                    type=int, default=10)
-parser.add_argument("-t", "--shift", help="Whether to use translation in flow",
-                    type=str2bool, nargs='?', const=True, default=True)
-parser.add_argument("-s", "--scale", help="Whether to use scaling in flow",
-                    type=str2bool, nargs='?', const=True, default=True)
-parser.add_argument("-d", "--det", help="Whether to use det in cost function",
-                    type=str2bool, nargs='?', const=True, default=True)
-parser.add_argument("--hidden_size", help='hidden layers size',
-                    default=[5, 5], nargs='+', type=int)
-
-conf = parser.parse_args()
-dev = torch.device('cuda:0') if conf.cuda else torch.device('cpu')
-
-# Build exp name
-if conf.name == 'experiment':
-    conf.name += '_' + conf.model + '_'
-    conf.name += conf.dataset + '_'
-    conf.name += 'lr{:.0e}_'.format(conf.lr)
-    conf.name += 'e{:d}_'.format(conf.epochs)
-    conf.name += 'wd{:.0e}_'.format(conf.weight_decay)
-    if conf.model == 'flow':
-        conf.name += 'k{:d}_'.format(conf.steps)
-        if not conf.det:
-            conf.name += 'nodet_'
-        if not conf.shift:
-            conf.name += 'noshift_'
-        if not conf.scale:
-            conf.name += 'noscale_'
-    if conf.model in ['flow', 'dnn']:
-        conf.name += \
-            '[' + '-'.join(['{:d}'.format(h) for h in conf.hidden_size]) + ']'
-
-
-save_dir = os.path.join(SAVE_PATH, conf.name)
-if not os.path.exists(save_dir):
-    os.makedirs(save_dir)
-else:
-    answer = str2bool(input("name already exists, overwrite? [y/N]? ").lower())
-    if not answer:
-        print('Aborting experiment')
-        sys.exit()
-
+conf = parse_conf()
+dev = conf.dev
+save_dir = conf.save_dir
 
 # Load data
 logits, target = load_toy_dataset('data/toys/', conf.dataset)
@@ -124,9 +38,14 @@ else:
 
 
 # optimizer
-opt = torch.optim.Adam(model.parameters(),
-                       lr=conf.lr,
-                       weight_decay=conf.weight_decay)
+if conf.optim == 'adam':
+    opt = torch.optim.Adam(model.parameters(),
+                           lr=conf.lr,
+                           weight_decay=conf.weight_decay)
+else:
+    opt = torch.optim.SGD(model.parameters(),
+                          lr=conf.lr,
+                          weight_decay=conf.weight_decay)
 CE = nn.CrossEntropyLoss()
 
 

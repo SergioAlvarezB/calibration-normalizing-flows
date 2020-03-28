@@ -1,11 +1,31 @@
 import os
+import sys
 import pickle
 import argparse
 
 import numpy as np
+import torch
 
 
 DEFAULT_CIFAR3 = ['airplane', 'automobile', 'bird']
+SAVE_PATH = r'C:\Users\sergi\Google Drive\calibration-ml\experiments'
+CONF = None
+MODELS = [
+    'flow',
+    'dnn',
+    'tscal',
+]
+
+DATASETS = [
+    'bayes',
+    'twisted',
+    'non',
+]
+
+OPTIMIZERS = [
+    'adam',
+    'sgd',
+]
 
 # Explicitely declare the mapping to use as reference.
 ix2label = {
@@ -20,6 +40,86 @@ ix2label = {
     8: 'ship',
     9: 'truck'}
 label2ix = {v: k for k, v in ix2label.items()}
+
+
+def parse_conf():
+    parser = argparse.ArgumentParser()
+    # Experiment meta-conf
+    parser.add_argument('--model', help='model used to calibrate',
+                        choices=MODELS, type=str.lower)
+    parser.add_argument('--dataset', help='dataset to calibrate',
+                        choices=DATASETS, type=str.lower)
+    parser.add_argument('--save', help='wether to save final model',
+                        type=str2bool, default=True)
+    parser.add_argument('--hist', help='wether to save training_history',
+                        type=str2bool, default=True)
+    parser.add_argument("-v", "--verbose", help="increase output verbosity",
+                        action="store_true")
+    parser.add_argument('-n', '--name', type=str.lower, default='exp',
+                        help='name to save the model')
+    parser.add_argument('-p', '--plots', help='wether to genertate plots',
+                        type=str2bool, default=True)
+
+    # General training hyperparameters
+    parser.add_argument('--optim', help='which optimizer to use',
+                        default='adam', choices=OPTIMIZERS)
+    parser.add_argument("--lr", help='learning rate', type=float, default=1e-4)
+    parser.add_argument("-e", "--epochs", help='epochs to train',
+                        type=int, default=30000)
+    parser.add_argument('--weight_decay', help='L2 regularization factor',
+                        type=float, default=0)
+    parser.add_argument("--cuda", help="Whether to use gpu", type=str2bool,
+                        nargs='?', const=True, default=True)
+    parser.add_argument('--step', help='step frequency to print info',
+                        type=int, default=10)
+
+    # Model-specific
+    parser.add_argument("-k", "--steps", help='Number of flow steps',
+                        type=int, default=10)
+    parser.add_argument("-t", "--shift", help="Whether to use shift in flow",
+                        type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument("-s", "--scale", help="Whether to use scaling in flow",
+                        type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument("-d", "--det", help="Whether to use det in cost",
+                        type=str2bool, nargs='?', const=True, default=True)
+    parser.add_argument("--hidden_size", help='hidden layers size',
+                        default=[5, 5], nargs='+', type=int)
+
+    global CONF
+    CONF = parser.parse_args()
+    CONF.dev = torch.device('cuda:0') if CONF.cuda else torch.device('cpu')
+
+    # Build experiment name
+    if CONF.name == 'exp':
+        CONF.name += '_' + CONF.model + '_'
+        CONF.name += CONF.dataset + '_'
+        CONF.name += CONF.optim + '_'
+        CONF.name += 'lr{:.0e}_'.format(CONF.lr)
+        CONF.name += 'e{:d}_'.format(CONF.epochs)
+        CONF.name += 'wd{:.0e}_'.format(CONF.weight_decay)
+        if CONF.model == 'flow':
+            CONF.name += 'k{:d}_'.format(CONF.steps)
+            if not CONF.det:
+                CONF.name += 'nodet_'
+            if not CONF.shift:
+                CONF.name += 'noshift_'
+            if not CONF.scale:
+                CONF.name += 'noscale_'
+        if CONF.model in ['flow', 'dnn']:
+            CONF.name += \
+                '[' + '-'.join(['{:d}'.format(h)
+                                for h in CONF.hidden_size]) + ']'
+
+    CONF.save_dir = os.path.join(SAVE_PATH, CONF.name)
+    if not os.path.exists(CONF.save_dir):
+        os.makedirs(CONF.save_dir)
+    else:
+        answer = str2bool(input("name already exists, overwrite? [y/N]? "))
+        if not answer:
+            print('Aborting experiment')
+            sys.exit()
+
+    return CONF
 
 
 def str2bool(v):
