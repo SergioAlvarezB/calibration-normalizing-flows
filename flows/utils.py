@@ -8,8 +8,16 @@ class MLP(nn.Module):
         super(MLP, self).__init__()
         self.activation = activation
         units = [dim] + hidden_size + [dim]
-        self.layers = nn.ModuleList([nn.Linear(units[i], units[i+1])
-                                     for i in range(len(units)-1)])
+
+        layers = []
+        for inp, outp in zip(units[:-1], units[1:]):
+            linear = nn.Linear(inp, outp)
+            with torch.no_grad():
+                linear.weight = nn.Parameter(linear.weight.detach()*0.001)
+                linear.bias = nn.Parameter(linear.bias.detach()*0.001)
+            layers.append(linear)
+
+        self.layers = nn.ModuleList(layers)
 
     def forward(self, x):
         for layer in self.layers[:-1]:

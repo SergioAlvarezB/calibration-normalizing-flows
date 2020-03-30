@@ -42,9 +42,9 @@ class AffineConstantLayer(nn.Module):
     def __init__(self, dim, scale=True, shift=True):
         super(AffineConstantLayer, self).__init__()
 
-        self.s = nn.Parameter(torch.randn(1, dim, requires_grad=True)) \
+        self.s = nn.Parameter(torch.zeros(1, dim, requires_grad=True)) \
             if scale else None
-        self.t = nn.Parameter(torch.randn(1, dim, requires_grad=True)) \
+        self.t = nn.Parameter(torch.zeros(1, dim, requires_grad=True)) \
             if shift else None
 
         # Indicate wether flow is computationally invertible.
@@ -84,8 +84,6 @@ class NvpCouplingLayer(nn.Module):
                 torch.as_tensor(mask.copy(), dtype=torch.float),
                 requires_grad=False)
 
-        self.softplus = nn.Softplus()
-
         # Indicate wether flow is computationally invertible.
         self.invertible = True
 
@@ -94,11 +92,10 @@ class NvpCouplingLayer(nn.Module):
         b_1 = 1 - self.mask
 
         s, t = self.s(x_b), self.t(x_b)
-        s_soft = self.softplus(s)
 
-        z = x_b + b_1 * (x * s_soft + t)
+        z = x_b + b_1 * (x * torch.exp(s) + t)
 
-        log_det = torch.sum(b_1*torch.log(s_soft), dim=1).squeeze()
+        log_det = torch.sum(b_1*s, dim=1).squeeze()
         return z.flip((1,)), log_det
 
     def backward(self, z):
@@ -107,11 +104,10 @@ class NvpCouplingLayer(nn.Module):
         b_1 = 1 - self.mask
 
         s, t = self.s(x_b), self.t(x_b)
-        s_soft = self.softplus(s)
 
-        x = x_b + b_1*((z - t) / s_soft)
+        x = x_b + b_1*(z - t)*torch.exp(-s)
 
-        log_det = torch.sum(b_1*(-torch.log(s_soft)), dim=1).squeeze()
+        log_det = torch.sum(b_1*(-s), dim=1).squeeze()
         return x, log_det
 
 

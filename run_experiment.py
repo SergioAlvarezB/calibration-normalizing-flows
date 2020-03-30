@@ -66,6 +66,7 @@ if conf.model == 'flow':
         'steps': conf.steps,
         'scale': conf.scale,
         'shift': conf.shift,
+        'det': conf.det,
         'hidden_size': conf.hidden_size
     }
 if conf.model == 'dnn':

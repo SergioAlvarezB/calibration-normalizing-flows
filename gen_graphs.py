@@ -98,8 +98,10 @@ def main(path, save, show):
     logits, target = load_toy_dataset('data/toys/', h['dataset'])
     uncal_nll = neg_log_likelihood(softmax(logits, axis=1), target)
 
-    nll = (np.array(h['loss']) + np.array(h['log_det'])) \
-        if h['model'] == 'flow' else h['loss']
+    if h['model'] == 'flow' and h['model_dict']['det']:
+        nll = (np.array(h['loss']) + np.array(h['log_det']))
+    else:
+        nll = h['loss']
 
     fig1, ax = plt.subplots(figsize=(12, 8))
     ax.plot(nll)
