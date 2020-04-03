@@ -4,7 +4,11 @@ import torch.nn.functional as F
 
 
 class MLP(nn.Module):
-    def __init__(self, dim, hidden_size=[], activation=F.relu):
+    def __init__(self,
+                 dim,
+                 hidden_size=[],
+                 activation=F.relu,
+                 wscale=1.):
         super(MLP, self).__init__()
         self.activation = activation
         units = [dim] + hidden_size + [dim]
@@ -13,8 +17,8 @@ class MLP(nn.Module):
         for inp, outp in zip(units[:-1], units[1:]):
             linear = nn.Linear(inp, outp)
             with torch.no_grad():
-                linear.weight = nn.Parameter(linear.weight.detach()*0.001)
-                linear.bias = nn.Parameter(linear.bias.detach()*0.001)
+                linear.weight = nn.Parameter(linear.weight.detach()*wscale)
+                linear.bias = nn.Parameter(linear.bias.detach()*wscale)
             layers.append(linear)
 
         self.layers = nn.ModuleList(layers)
