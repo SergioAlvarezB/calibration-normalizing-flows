@@ -23,6 +23,10 @@ n_samples, dim = logits.shape
 torch_logits = torch.as_tensor(logits, dtype=torch.float).to(dev)
 torch_target = torch.as_tensor(target, dtype=torch.long).to(dev)
 
+if conf.inv:
+    torch_logits -= torch_logits.min(dim=1, keepdim=True)[0] - 0.1
+    torch_logits = 1./torch_logits
+
 # Load model
 if conf.model == 'flow':
     model = Flow([NvpCouplingLayer(dim,
@@ -82,11 +86,15 @@ for e in range(conf.epochs):
         zs, _logdet = model(torch_logits)
         _logdet = torch.mean(_logdet)
         preds = zs[-1]
+        if conf.inv:
+            preds = 1./preds.abs()
         _loss = CE(preds, torch_target) - (conf.det)*_logdet
         h['log_det'].append(_logdet.item())
 
     else:
         preds = model(torch_logits)
+        if conf.inv:
+            preds = 1./preds.abs()
         _loss = CE(preds, torch_target)
 
     h['loss'].append(_loss.item())

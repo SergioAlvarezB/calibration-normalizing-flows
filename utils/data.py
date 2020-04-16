@@ -5,6 +5,7 @@ import argparse
 
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 
 DEFAULT_CIFAR3 = ['airplane', 'automobile', 'bird']
@@ -41,6 +42,9 @@ ix2label = {
     9: 'truck'}
 label2ix = {v: k for k, v in ix2label.items()}
 
+colors = ['b', 'g', 'r', 'k']
+colors_test = ['cyan', 'lightgreen', 'orange', 'gray']
+
 
 def parse_conf():
     parser = argparse.ArgumentParser()
@@ -74,6 +78,8 @@ def parse_conf():
                         type=int, default=10)
 
     # Model-specific
+    parser.add_argument("--inv", help="whether to invert logits",
+                        action="store_true")
     parser.add_argument("-k", "--steps", help='Number of flow steps',
                         type=int, default=10)
     parser.add_argument("-t", "--shift", help="Whether to use shift in flow",
@@ -97,6 +103,8 @@ def parse_conf():
         CONF.name += 'lr{:.0e}_'.format(CONF.lr)
         CONF.name += 'e{:d}_'.format(CONF.epochs)
         CONF.name += 'wd{:.0e}_'.format(CONF.weight_decay)
+        if CONF.inv:
+            CONF.name += 'inv_'
         if CONF.model == 'flow':
             CONF.name += 'k{:d}_'.format(CONF.steps)
             if not CONF.det:
@@ -140,6 +148,180 @@ def load_toy_dataset(data_path, dataset):
     target = np.load(os.path.join(data_path, dataset + '_target.npy'))
 
     return logits, target
+
+
+def reset_seed(seed: int) -> None:
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+
+# JUAN  2D toy dataset
+def toy_dataset(N: int) -> list:
+    ''' Toy Dataset
+        Args:
+            N  (int) :->: Number of Samples. If it is not divisible by 4,
+            it will be rounded to be
+    '''
+    reset_seed(1)
+
+    ''' test set '''
+    x1 = torch.randn(20, 2)*1 + 0.5
+    x2 = torch.randn(20, 2)*0.5 + torch.from_numpy(np.array([0.5, -2])).float()
+    x3 = torch.randn(20, 2)*0.3 - 0.5
+    x4 = torch.randn(20, 2)*0.8 + torch.from_numpy(np.array([-1., -2])).float()
+
+    t1 = torch.zeros(20,)
+    t2 = torch.ones(20,)
+    t3 = torch.ones(20,) + 1
+    t4 = torch.ones(20,) + 2
+
+    idx = np.random.permutation(80)
+    x_test = torch.cat((x1, x2, x3, x4))[idx].float()
+    t_test = torch.cat((t1, t2, t3, t4))[idx].long()
+
+    ''' train set '''
+    per_class = int(N/4.)
+
+    # sample samples per class
+    x1 = torch.randn(per_class, 2)*1.0 + 0.5
+    x2 = torch.randn(per_class, 2)*0.5 \
+        + torch.from_numpy(np.array([0.5, -2])).float()
+    x3 = torch.randn(per_class, 2)*0.3-0.5
+    x4 = torch.randn(per_class, 2)*0.8 \
+        + torch.from_numpy(np.array([-1., -2])).float()
+
+    t1 = torch.zeros(per_class,)
+    t2 = torch.ones(per_class,)
+    t3 = torch.ones(per_class,)+1
+    t4 = torch.ones(per_class,)+2
+
+    idx = np.random.permutation(per_class*4)
+    x = torch.cat((x1, x2, x3, x4))[idx].float()
+    t = torch.cat((t1, t2, t3, t4))[idx].long()
+
+    return [x, t], [x_test, t_test]
+
+
+def plot_toy_dataset(X_tr: list, X_te: list) -> None:
+
+    X, T = X_tr
+    X_te, T_te = X_te
+
+    X = X.detach().numpy()
+    T = T.detach().numpy()
+    X_te = X_te.detach().numpy()
+    T_te = T_te.detach().numpy()
+
+    N_labels = np.unique(T)
+    assert len(N_labels) == len(np.unique(T_te)), ("Getting different number"
+                                                   "of classes")
+
+    for l in N_labels:
+        idx_tr = T == l
+        idx_te = T_te == l
+        plt.plot(X[idx_tr, 0], X[idx_tr, 1], '*' + colors[l])
+        plt.plot(X_te[idx_te, 0], X_te[idx_te, 1], 'o', color=colors_test[l])
+
+    plt.show(block=True)
+
+
+def plot_toy_regions(X_tr, X_te, model, M=300, predictive_samples=1000):
+    X_tr, T_tr = X_tr
+    X_te, T_te = X_te
+
+    X_tr = X_tr.detach().cpu().numpy()
+    T_tr = T_tr.detach().cpu().numpy()
+    X_te = X_te.detach().cpu().numpy()
+    T_te = T_te.detach().cpu().numpy()
+
+    # Define the grid where we plot
+    vx = np.linspace(-5, 4, M)
+    vy = np.linspace(-5, 4, M)
+    data_feat = np.zeros((M**2, 2), np.float32)
+
+    # this can be done much more efficient for sure
+    for x, px in enumerate(vx):
+        for y, py in enumerate(vy):
+            data_feat[x*M+y] = np.array([px, py])
+
+    # forward through the model
+    data_feat = torch.from_numpy(data_feat)
+    with torch.no_grad():
+        logits = model.predictive(data_feat, predictive_samples)
+        max_conf, max_target = torch.max(logits, dim=1)
+
+    conf = np.zeros((M**2), np.float32)
+    labl = np.zeros((M**2), np.float32)
+    data_feat = 0
+    conf[:] = np.nan
+    labl[:] = np.nan
+    max_conf, max_target = max_conf.detach(), max_target.detach()
+    for x, px in enumerate(vx):
+        for y, py in enumerate(vy):
+            conf[x*M+y] = max_conf[x*M+y]
+            labl[x*M+y] = max_target[x*M+y]
+
+    X, Y = np.meshgrid(vx, vy)
+
+    cmap = [
+            plt.cm.get_cmap("Reds"),
+            plt.cm.get_cmap("Greens"),
+            plt.cm.get_cmap("Blues"),
+            plt.cm.get_cmap("Greys")
+        ]
+
+    color_list_tr = ['*r', '*g', '*b', '*k']
+    color_list_te = ['orange', 'lightgreen', 'cyan', 'gray']
+    markers = ['d', '*', 'P', 'v']
+    fig, ax = plt.subplots(figsize=(18, 12))
+
+    for ctr, cte, i, c, marker in zip(color_list_tr,
+                                      color_list_te,
+                                      range(4),
+                                      cmap,
+                                      markers):
+
+        idx_tr = T_tr == i
+        idx_te = T_te == i
+        xtr = X_tr[idx_tr, :]
+        xte = X_te[idx_te, :]
+
+        aux = np.zeros((M**2), np.float32)
+        x1, x2 = xtr[:, 0], xtr[:, 1]
+
+        plt.plot(x1, x2, marker, color=cte, markersize=10, alpha=0.5)
+
+        index = np.where(labl == i)[0]
+        aux[index] = conf[index]
+        index_neg = np.where(labl != i)[0]
+        aux[index_neg] = np.nan
+        aux = aux.reshape(M, M, order='F')
+        dib = ax.contourf(X, Y, aux, cmap=c, alpha=0.5, levels=[
+                0,
+                0.25,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.75,
+                0.8,
+                0.85,
+                0.9,
+                0.92,
+                0.94,
+                0.96,
+                0.98,
+                1.0
+            ])
+
+        if i == 3:
+            plt.xlabel('x1', fontsize=22)
+            plt.ylabel('x2', fontsize=22)
+            plt.xticks([-5, -4, -3, -2, -1, 0, 1, 2, 3, 4], fontsize=18)
+            plt.yticks([-5, -4, -3, -2, -1, 0, 1, 2, 3, 4], fontsize=18)
+
+    plt.show()
 
 
 def load_logits(model_dir):
