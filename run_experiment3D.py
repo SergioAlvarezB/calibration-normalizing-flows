@@ -8,7 +8,7 @@ from torch import nn
 from flows.flows import Flow, NvpCouplingLayer
 from flows.utils import MLP, TempScaler
 from utils.data import load_toy_dataset, parse_conf
-from gen_graphs import main as plots
+from gen_graphs3D import main as plots
 
 
 conf = parse_conf()
