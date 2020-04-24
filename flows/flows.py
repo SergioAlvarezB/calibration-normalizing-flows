@@ -72,9 +72,9 @@ class NvpCouplingLayer(nn.Module):
                  scale=True,
                  shift=True):
         super(NvpCouplingLayer, self).__init__()
-        self.s = MLP(dim, hidden_size) if scale \
+        self.s = MLP(dim, hidden_size, wscale=0.001) if scale \
             else lambda x: x.new_zeros(x.size())
-        self.t = MLP(dim, hidden_size) if shift \
+        self.t = MLP(dim, hidden_size, wscale=0.001) if shift \
             else lambda x: x.new_zeros(x.size())
 
         mask = np.zeros((1, dim))

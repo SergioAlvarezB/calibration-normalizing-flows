@@ -4,6 +4,8 @@ from torch import nn
 from divergences import gauss_KLD, gauss_revKLD, gauss_jeffrey, gauss_fisher
 from divergences import gauss_a, gauss_ar, gauss_beta, gauss_gamma
 
+from utils.metrics import expected_calibration_error
+
 
 class Linear_LR(nn.Module):
 
@@ -133,6 +135,14 @@ class BNN_GVILR(nn.Module):
         Z = z
 
         return Z
+
+    def evaluate(self, X, y, n_samples=1000):
+        preds = self.predictive(X, n_samples=n_samples)
+        _, _preds = torch.max(preds, dim=1)
+        acc = torch.mean((_preds == y).float()).item()
+        ece = expected_calibration_error(preds.cpu().numpy(), y.cpu().numpy())
+
+        return acc, ece
 
     def _get_collapsed_posterior(self):
         # Percentage of collapsed parameters

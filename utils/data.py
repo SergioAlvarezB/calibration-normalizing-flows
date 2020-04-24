@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 
 DEFAULT_CIFAR3 = ['airplane', 'automobile', 'bird']
@@ -15,6 +16,7 @@ MODELS = [
     'flow',
     'dnn',
     'tscal',
+    'bnn',
 ]
 
 DATASETS = [
@@ -26,6 +28,17 @@ DATASETS = [
 OPTIMIZERS = [
     'adam',
     'sgd',
+]
+
+divergences = [
+        'KL',
+        'rKL',
+        'F',
+        'J',
+        'A',
+        'AR',
+        'B',
+        'G'
 ]
 
 # Explicitely declare the mapping to use as reference.
@@ -90,6 +103,14 @@ def parse_conf():
                         type=str2bool, nargs='?', const=True, default=True)
     parser.add_argument("--hidden_size", help='hidden layers size',
                         default=[5, 5], nargs='+', type=int)
+    parser.add_argument("--divergence", help='What divergence to use for gvi',
+                        default='KL', choices=divergences)
+    parser.add_argument("--d_param", help='divergence hyperparameter',
+                        type=float, default=1)
+    parser.add_argument("--p_mean", help='prior mean',
+                        type=float, default=0)
+    parser.add_argument("--p_var", help='prior var',
+                        type=float, default=1)
 
     global CONF
     CONF = parser.parse_args()
@@ -113,7 +134,12 @@ def parse_conf():
                 CONF.name += 'noshift_'
             if not CONF.scale:
                 CONF.name += 'noscale_'
-        if CONF.model in ['flow', 'dnn']:
+        if CONF.model == 'bnn':
+            CONF.name += '{}D_'.format(CONF.divergence)
+            CONF.name += '{:.2f}_'.format(CONF.d_param)
+            CONF.name += '{:.0e}_'.format(CONF.p_mean)
+            CONF.name += '{:.0e}_'.format(CONF.p_var)
+        if CONF.model in ['flow', 'dnn', 'bnn']:
             CONF.name += \
                 '[' + '-'.join(['{:d}'.format(h)
                                 for h in CONF.hidden_size]) + ']'
@@ -216,13 +242,21 @@ def plot_toy_dataset(X_tr: list, X_te: list) -> None:
     assert len(N_labels) == len(np.unique(T_te)), ("Getting different number"
                                                    "of classes")
 
+    fig, ax = plt.subplots(figsize=(12, 10))
+
     for l in N_labels:
         idx_tr = T == l
         idx_te = T_te == l
-        plt.plot(X[idx_tr, 0], X[idx_tr, 1], '*' + colors[l])
-        plt.plot(X_te[idx_te, 0], X_te[idx_te, 1], 'o', color=colors_test[l])
+        ax.plot(X[idx_tr, 0], X[idx_tr, 1], '*' + colors[l])
+        ax.plot(X_te[idx_te, 0], X_te[idx_te, 1], 'o', color=colors_test[l])
 
-    plt.show(block=True)
+    legend_elements = [Line2D([0], [0], marker='*',
+                              label='Train', linestyle='None'),
+                       Line2D([0], [0], marker='o',
+                              label='Test', linestyle='None')]
+
+    ax.legend(handles=legend_elements)
+    plt.show()
 
 
 def plot_toy_regions(X_tr, X_te, model, M=300, predictive_samples=1000):

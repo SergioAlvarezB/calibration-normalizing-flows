@@ -9,6 +9,8 @@ from flows.flows import Flow, NvpCouplingLayer
 from flows.utils import MLP, TempScaler
 from utils.data import load_toy_dataset, parse_conf
 from gen_graphs3D import main as plots
+from BNN_GVI_LR import BNN_GVILR
+from utils.metrics import expected_calibration_error
 
 
 conf = parse_conf()
@@ -37,6 +39,13 @@ if conf.model == 'flow':
 elif conf.model == 'dnn':
     model = MLP(dim, hidden_size=conf.hidden_size).to(dev)
 
+elif conf.model == 'bnn':
+    model = BNN_GVILR(dim,
+                      dim,
+                      conf.p_mean,
+                      conf.p_var,
+                      conf.divergence,
+                      conf.d_param).to(dev)
 else:
     model = TempScaler().to(dev)
 
@@ -77,6 +86,13 @@ if conf.model == 'dnn':
     h['model_dict'] = {
         'hidden_size': conf.hidden_size
     }
+if conf.model == 'bnn':
+    h['_D'] = []
+    h['model_dict'] = {
+        'divergence': conf.divergence,
+        'd_param': conf.d_param,
+        'hidden_size': conf.hidden_size
+    }
 
 t0 = time.time()
 for e in range(conf.epochs):
@@ -90,14 +106,26 @@ for e in range(conf.epochs):
             preds = 1./preds.abs()
         _loss = CE(preds, torch_target) - (conf.det)*_logdet
         h['log_det'].append(_logdet.item())
+        h['loss'].append(_loss.item())
+
+    if conf.model == 'bnn':
+        model.train()
+        _loss, _NLL, _D = model.ELBO(torch_logits,
+                                     torch_target,
+                                     warm_up=(e < 10))
+        model.eval()
+        preds = torch.log(model.predictive(torch_logits, n_samples=100))
+        h['_D'].append(_D.item())
+        _NLL /= n_samples
+        h['loss'].append(_NLL.item())
 
     else:
         preds = model(torch_logits)
         if conf.inv:
             preds = 1./preds.abs()
         _loss = CE(preds, torch_target)
+        h['loss'].append(_loss.item())
 
-    h['loss'].append(_loss.item())
     if (preds != preds).any():
         print('Aborting training due to nan values')
         break
@@ -111,6 +139,9 @@ for e in range(conf.epochs):
         if conf.verbose:
             print("Finished epoch: {:d} at time {:.2f}, loss: {:.3e}".format(
                   e, time.time()-t0, h['loss'][-1]))
+
+if conf.model == 'bnn':
+    h['acc'], h['ece'] = model.evaluate(torch_logits, torch_target)
 
 if conf.hist:
     np.save(os.path.join(save_dir, 'history'), h)
