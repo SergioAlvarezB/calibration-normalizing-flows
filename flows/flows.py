@@ -70,7 +70,8 @@ class NvpCouplingLayer(nn.Module):
                  dim,
                  hidden_size=[5, 5],
                  scale=True,
-                 shift=True):
+                 shift=True,
+                 random_flip=False):
         super(NvpCouplingLayer, self).__init__()
         self.s = MLP(dim, hidden_size, wscale=0.001) if scale \
             else lambda x: x.new_zeros(x.size())
@@ -86,6 +87,16 @@ class NvpCouplingLayer(nn.Module):
 
         # Indicate wether flow is computationally invertible.
         self.invertible = True
+        self.random_flip = random_flip
+
+        if random_flip:
+            self.perm = np.random.permutation(dim)
+            self.rev_perm = np.zeros(dim)
+            self.rev_perm[self.perm] = np.arange(dim)
+            self.perm = nn.Parameter(torch.LongTensor([self.perm]),
+                                     requires_grad=False)
+            self.rev_perm = nn.Parameter(torch.LongTensor([self.rev_perm]),
+                                         requires_grad=False)
 
     def forward(self, x):
         x_b = self.mask*x
@@ -96,10 +107,14 @@ class NvpCouplingLayer(nn.Module):
         z = x_b + b_1 * (x * torch.exp(s) + t)
 
         log_det = torch.sum(b_1*s, dim=1).squeeze()
+        if self.random_flip:
+            z = z[:, self.perm.numpy().squeeze()]
         return z.flip((1,)), log_det
 
     def backward(self, z):
         z = z.flip((1,))
+        if self.random_flip:
+            z = z[:, self.rev_perm.numpy().squeeze()]
         x_b = self.mask*z
         b_1 = 1 - self.mask
 
