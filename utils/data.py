@@ -181,14 +181,33 @@ def reset_seed(seed: int) -> None:
     np.random.seed(seed)
 
 
-def load_logits(model_dir):
-    with open(os.path.join(model_dir, 'train_logits.pkl'), 'rb') as f:
-        train_logits = pickle.load(f)
+def load_logits(dataset, model, data_path='../data'):
 
-    with open(os.path.join(model_dir, 'test_logits.pkl'), 'rb') as f:
-        test_logits = pickle.load(f)
+    # Build path.
+    name = '_'.join([model, dataset])
+    path = os.path.join(data_path, name)
 
-    return train_logits, test_logits
+    # Load logits and labels
+    name = '_'.join([dataset, model])
+    logits_train = np.load(os.path.join(path, name
+                                        + '_logit_prediction_train.npy'))
+    logits_val = np.load(os.path.join(path, name
+                                      + '_logit_prediction_valid.npy'))
+    logits_test = np.load(os.path.join(path, name
+                                       + '_logit_prediction_test.npy'))
+
+    true_train = np.load(os.path.join(path, name + '_true_train.npy'))
+    true_val = np.load(os.path.join(path, name + '_true_valid.npy'))
+    true_test = np.load(os.path.join(path, name + '_true_test.npy'))
+
+    train = (torch.as_tensor(logits_train, dtype=torch.float32),
+             torch.as_tensor(true_train, dtype=torch.int64))
+    validation = (torch.as_tensor(logits_val, dtype=torch.float32),
+                  torch.as_tensor(true_val, dtype=torch.int64))
+    test = (torch.as_tensor(logits_test, dtype=torch.float32),
+            torch.as_tensor(true_test, dtype=torch.int64))
+
+    return train, validation, test
 
 
 def unpickle(file):
